@@ -60,11 +60,11 @@ func IsCommit(rev string) bool { return commitRE.MatchString(rev) }
 type HubSource string
 
 const (
-	FromFamily HubSource = "family"       // settings.json models.root
-	FromApp    HubSource = "app"          // the app's own folder, when it does not follow the family
-	FromEnvHub HubSource = "HF_HUB_CACHE" // environment
-	FromEnvHome HubSource = "HF_HOME"     // environment: $HF_HOME/hub
-	FromDefault HubSource = "default"     // ~/.cache/huggingface/hub
+	FromFamily  HubSource = "family"       // settings.json models.root
+	FromApp     HubSource = "app"          // the app's own folder, when it does not follow the family
+	FromEnvHub  HubSource = "HF_HUB_CACHE" // environment
+	FromEnvHome HubSource = "HF_HOME"      // environment: $HF_HOME/hub
+	FromDefault HubSource = "default"      // ~/.cache/huggingface/hub
 )
 
 // ResolveHub finds $HUB (spec §7.1), the first that is set of:
