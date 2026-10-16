@@ -136,7 +136,7 @@ func (l *HeldLock) Release() error {
 	if l == nil || l.lock == nil {
 		return nil
 	}
-	if o, ok := ReadOwner(l.path); ok && o.PID == l.owner.PID && o.Since.Equal(l.owner.Since) {
+	if o, ok := ReadOwner(l.path); ok && o.PID == l.owner.PID && o.BundleID == l.owner.BundleID && o.Op == l.owner.Op && o.Since.Equal(l.owner.Since) {
 		os.Remove(l.path + ".owner")
 	}
 	err := l.lock.Unlock()
