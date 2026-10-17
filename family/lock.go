@@ -92,6 +92,40 @@ func (l *Lock) Unlock() error {
 	return err
 }
 
+// Convert changes the mode of the held lock in place (flock(2) on the
+// same descriptor), waiting while another holder's lock conflicts, until
+// ctx ends. The kernel does not make this atomic: it may drop the old
+// lock first and grant a waiting process its lock in between, so re-check
+// what the lock protects afterwards. When it fails, the lock is no longer
+// held in either mode: Unlock it.
+func (l *Lock) Convert(ctx context.Context, mode LockMode) error {
+	if l == nil || l.f == nil {
+		return errors.New("family: convert of a released lock")
+	}
+	if l.Mode == mode {
+		return nil
+	}
+	delay := 5 * time.Millisecond
+	for {
+		err := flock(l.f, mode, false)
+		if err == nil {
+			l.Mode = mode
+			return nil
+		}
+		if !errors.Is(err, ErrLocked) {
+			return err
+		}
+		t := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return ctx.Err()
+		case <-t.C:
+		}
+		delay = min(delay*2, 100*time.Millisecond)
+	}
+}
+
 // WithLock runs fn holding locks/<name>.lock exclusively: the
 // read-modify-write of a multi-writer file (spec §5.3). Keep fn short (no
 // network, no dialogs): the spec asks for under 100 ms.

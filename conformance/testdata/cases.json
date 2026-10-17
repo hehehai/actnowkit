@@ -4,6 +4,7 @@
     { "file": "family.json", "kind": "family", "result": "ok", "expect": { "/specVersion": 1, "/createdBy": "dev.hehehai.dicta" } },
     { "file": "app.json", "kind": "app", "result": "ok", "expect": { "/bundleId": "dev.hehehai.audiosmith", "/variant": "release", "/models/root": "/Users/u/.cache/huggingface/hub", "/shortcuts/0/keys": "Shift+Command+Space" } },
     { "file": "claims.json", "kind": "models.claims", "result": "ok", "expect": { "/claims/0/revision": "313d850181767edf09f00a9c289becca70e58cd0", "/claims/0/files": null, "/root": "/Users/u/.cache/huggingface/hub" } },
+    { "file": "claims-models.json", "kind": "models.claims", "result": "ok", "expect": { "/claims/0/models/0": "whisper-large-v3-4bit", "/claims/0/models/1": "whisper-large-v3-turbo-4bit", "/claims/0/aux": true } },
     { "file": "settings.json", "kind": "settings", "result": "ok", "expect": { "/rev": 12, "/network/hfEndpoints": "auto", "/general/language": "" } },
     { "file": "credentials.json", "kind": "credentials", "result": "ok", "expect": { "/vendors/deepseek/account": "vendor.deepseek", "/vendors/volcengine-speech/appId": "123456" } },
     { "file": "removed.json", "kind": "models.removed", "result": "ok", "expect": { "/removed/0/removedBy": "dev.hehehai.dicta" } },

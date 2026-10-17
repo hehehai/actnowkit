@@ -31,9 +31,10 @@ type User struct {
 type Decision struct {
 	Ref    Ref
 	Status Status // the snapshot on disk
-	// Mine: this app claims it (MyClaim).
-	Mine    bool
-	MyClaim Claim
+	// Mine: this app claims it (MyClaim), for the models MyModels.
+	Mine     bool
+	MyClaim  Claim
+	MyModels []string
 	// Users are the other apps with a valid claim: same $HUB, installed.
 	Users []User
 	// Orphans are the claims of uninstalled apps.
@@ -116,7 +117,7 @@ func (s *Store) Decide(ref Ref) (Decision, error) {
 			continue
 		}
 		if bid == s.BundleID {
-			d.Mine, d.MyClaim = true, c
+			d.Mine, d.MyClaim, d.MyModels = true, c, c.Users()
 			continue
 		}
 		u := userOf(bid, apps)
@@ -161,6 +162,10 @@ type Result struct {
 	Freed    int64    // bytes removed
 	// Tombstoned: other apps' claims were overridden (AllApps).
 	Tombstoned bool
+	// OwnModels are this app's other models that still use the repo
+	// (DeleteModel): with ThisApp the claim and files stay for them; with
+	// AllApps they lost it too.
+	OwnModels []string
 }
 
 // Delete removes ref from this app, following spec §7.6 step 1:
@@ -220,6 +225,35 @@ func (s *Store) Delete(ctx context.Context, ref Ref, scope Scope) (Result, error
 	}
 	_ = s.Family.Post(family.TopicModels)
 	return res, nil
+}
+
+// DeleteModel removes one of this app's models (a catalogue id) from ref:
+// the model's main repo, or one of its auxiliary repos. When other models
+// of this app still use ref, ThisApp only releases model from the claim
+// (Release) and keeps everything, reporting them in Result.OwnModels;
+// AllApps deletes anyway, as Delete does. Otherwise it is Delete.
+// Call it for the model's repo and for each of its auxiliary repos.
+func (s *Store) DeleteModel(ctx context.Context, ref Ref, model string, scope Scope) (Result, error) {
+	if !ValidRepo(ref.Repo) || ref.Revision == "" {
+		return Result{}, fmt.Errorf("%s: %w", ref, errBadRepo)
+	}
+	mine, _ := s.Claims()
+	if c, ok := mine.Find(ref); ok && model != "" {
+		others := slices.DeleteFunc(c.Users(), func(u string) bool { return u == model })
+		if len(others) > 0 {
+			if scope == ThisApp {
+				if _, err := s.Release(ref, model); err != nil {
+					return Result{}, err
+				}
+				d, err := s.Decide(ref)
+				return Result{Decision: d, OwnModels: others}, err
+			}
+			res, err := s.Delete(ctx, ref, scope)
+			res.OwnModels = others
+			return res, err
+		}
+	}
+	return s.Delete(ctx, ref, scope)
 }
 
 // snapshotBlobs maps the blobs a snapshot links (absolute paths) to their

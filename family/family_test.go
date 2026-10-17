@@ -366,3 +366,36 @@ func TestTextFill(t *testing.T) {
 		t.Error(tx)
 	}
 }
+
+func TestConvert(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "x.lock")
+	ctx := context.Background()
+	l, err := TryLock(p, Exclusive, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Convert(ctx, Shared); err != nil || l.Mode != Shared {
+		t.Fatal(err)
+	}
+	s, err := TryLock(p, Shared, 0o600)
+	if err != nil {
+		t.Fatal("shared beside a downgraded lock:", err)
+	}
+	// Back to exclusive waits for the other shared holder.
+	c, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+	if err := l.Convert(c, Exclusive); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal("converted past another holder:", err)
+	}
+	s.Unlock()
+	if err := l.Convert(ctx, Exclusive); err != nil || l.Mode != Exclusive {
+		t.Fatal(err)
+	}
+	if _, err := TryLock(p, Shared, 0o600); !errors.Is(err, ErrLocked) {
+		t.Fatal("not exclusive")
+	}
+	l.Unlock()
+	if err := l.Convert(ctx, Shared); err == nil {
+		t.Error("convert after unlock")
+	}
+}

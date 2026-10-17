@@ -102,6 +102,10 @@ func readmeExamples(ctx context.Context) {
 	_ = res.Deleted
 	var busy *models.BusyError
 	_ = errors.As(err, &busy)
+	tok, tokCommit := "openai/whisper-large-v3", commit
+	store.Claim(ctx, models.Claim{Repo: tok, Revision: tokCommit, Model: "whisper-turbo", Aux: true})
+	res, err = store.DeleteModel(ctx, models.Ref{Repo: tok, Revision: tokCommit}, "whisper-turbo", models.ThisApp)
+	_ = res.OwnModels
 	usage, _ := store.Usage()
 	_ = usage.Mine + usage.Shared
 	orphans, _ := store.Orphans()

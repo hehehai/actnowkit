@@ -36,6 +36,21 @@ type ModelApp interface {
 	Remove(ctx context.Context, ref models.Ref, allApps bool) error
 }
 
+// CatalogApp is an app whose catalogue entries can share repos (an
+// auxiliary tokenizer used by two models). Claims then name every model
+// using the repo (spec §7.3 "models").
+type CatalogApp interface {
+	BundleID() string
+	// UseModel registers installed repos (a model's main repo and its
+	// auxiliary repos) as used by one catalogue model, as "Use them" or a
+	// finished download does.
+	UseModel(ctx context.Context, model string, refs ...models.Ref) error
+	// RemoveModel is "Remove from <app>" for one catalogue model: each of
+	// its repos is released, and deleted unless something (another app,
+	// or another model of this app) still uses it.
+	RemoveModel(ctx context.Context, model string, refs ...models.Ref) error
+}
+
 // Downloader is an app that downloads models.
 type Downloader interface {
 	BundleID() string
@@ -125,6 +140,7 @@ var Scenarios = []Scenario{
 	{Name: "DeleteKeepsSharedModel", Spec: "§16.1 scenario 2, §7.6", Run: deleteShared},
 	{Name: "DeleteUnsharedModel", Spec: "§7.6 step 1.5", Run: deleteUnshared},
 	{Name: "DeleteForAllApps", Spec: "§7.6 step 1.6", Run: deleteForAll},
+	{Name: "SharedRepoWithinApp", Spec: "§7.3 models, §7.6", Run: sharedWithinApp},
 	{Name: "DeleteWhileDownloading", Spec: "§7.4", Run: deleteBusy},
 	{Name: "DeleteWhileLoaded", Spec: "§7.6 step 1.4, §11.1", Run: deleteLoaded},
 	{Name: "ConcurrentDownload", Spec: "§16.1 scenario 3, §7.4", Run: concurrentDownload},
@@ -249,6 +265,36 @@ func deleteForAll(t testing.TB, fx *Fixture, newApp Factory) {
 	hit, err := peer.ApplyTombstones()
 	if err != nil || len(hit) != 1 {
 		t.Errorf("the peer did not see the tombstone: %v %v", hit, err)
+	}
+}
+
+func sharedWithinApp(t testing.TB, fx *Fixture, newApp Factory) {
+	app := as[CatalogApp](t, newApp(t, fx, AppUnderTest))
+	ctx := timeout(t)
+	tok := TestRepo("openai/whisper-large-v3", "06f233fe06e710322aca913c1bc4249a0d71fce1", 4<<10)
+	fx.Install(repoASR)
+	fx.Install(repoLLM)
+	fx.Install(tok)
+	must(t, app.UseModel(ctx, "fast", repoASR.Ref, tok.Ref))
+	must(t, app.UseModel(ctx, "slow", repoLLM.Ref, tok.Ref))
+	c, ok := fx.Claims(app.BundleID()).Find(tok.Ref)
+	if !ok || !slices.Equal(c.Users(), []string{"fast", "slow"}) {
+		t.Fatalf("the shared repo's claim names %v (%v), want both models (\"models\": [\"fast\", \"slow\"])", c.Users(), ok)
+	}
+	must(t, app.RemoveModel(ctx, "fast", repoASR.Ref, tok.Ref))
+	if fx.Installed(repoASR.Ref) {
+		t.Error("the removed model's own repo stayed though nothing uses it")
+	}
+	if !fx.Installed(tok.Ref) {
+		t.Fatal("removing one model deleted a repo another model of the same app uses")
+	}
+	c, ok = fx.Claims(app.BundleID()).Find(tok.Ref)
+	if !ok || !slices.Equal(c.Users(), []string{"slow"}) {
+		t.Errorf("after removing \"fast\", the shared repo's claim names %v (%v), want [slow]", c.Users(), ok)
+	}
+	must(t, app.RemoveModel(ctx, "slow", repoLLM.Ref, tok.Ref))
+	if fx.Installed(tok.Ref) || fx.Claimed(app.BundleID(), tok.Ref) {
+		t.Error("the shared repo stayed after its last model went")
 	}
 }
 

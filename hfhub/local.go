@@ -217,13 +217,13 @@ func (c *Client) verifyOne(ctx context.Context, e Entry, removed *bool) ([]strin
 }
 
 // Delete removes e from this app (spec §7.6). With Options.Store it is
-// models.Store.Delete for e's repo and then each auxiliary repo, each
-// judged on its own: this app's claim goes, and the files go only when no
-// other app claims or loads them (scope ThisApp), or whoever does
-// (AllApps, with a tombstone). The results are in that order.
-//
-// Claims are per app, not per entry: when another entry of this app uses
-// one of e's auxiliary repos, leave it out of e.Aux.
+// models.Store.DeleteModel(…, e.ID, …) for e's repo and then each
+// auxiliary repo, each judged on its own: e's name leaves this app's
+// claim, the claim goes when no other entry of this app uses the repo,
+// and the files go only when no other app claims or loads them (scope
+// ThisApp), or whoever does (AllApps, with a tombstone). An auxiliary
+// repo another entry of this app still uses stays (Result.OwnModels).
+// The results are in that order.
 //
 // Without a Store, the snapshot is deleted (models.DeleteSnapshot) holding
 // the repo lock exclusively, and auxiliary repos stay (other entries may
@@ -259,7 +259,7 @@ func (c *Client) Delete(ctx context.Context, e Entry, scope models.Scope) ([]mod
 		if !ok {
 			continue
 		}
-		res, err := c.opts.Store.Delete(ctx, ref, scope)
+		res, err := c.opts.Store.DeleteModel(ctx, ref, e.ID, scope)
 		if err != nil {
 			if i == 0 {
 				return nil, err // the model stays: so do its auxiliary repos

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -166,6 +167,19 @@ func (n naiveApp) Remove(_ context.Context, r models.Ref, _ bool) error {
 	return os.RemoveAll(models.RepoDir(n.fx.Hub, r.Repo))
 }
 
+// v01App removes a model the way actnowkit v0.1 did: the app's whole
+// claim on each repo goes, even when another of its models uses it.
+type v01App struct{ *KitApp }
+
+func (a v01App) RemoveModel(ctx context.Context, model string, refs ...models.Ref) error {
+	for _, r := range refs {
+		if _, err := a.store.Delete(ctx, r, models.ThisApp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // recorder runs a scenario and records whether it failed.
 type recorder struct {
 	testing.TB
@@ -190,6 +204,22 @@ func (r *recorder) Fatalf(format string, args ...any) {
 func (r *recorder) FailNow()     { r.note("FailNow"); runtime.Goexit() }
 func (r *recorder) Fail()        { r.note("Fail") }
 func (r *recorder) Failed() bool { r.mu.Lock(); defer r.mu.Unlock(); return r.failed }
+
+func TestSuiteCatchesV01SharedAux(t *testing.T) {
+	sc := Scenarios[slices.IndexFunc(Scenarios, func(s Scenario) bool { return s.Name == "SharedRepoWithinApp" })]
+	rec := &recorder{TB: t}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		fx := New(rec)
+		sc.Run(rec, fx, func(tb testing.TB, fx *Fixture, bid string) any { return v01App{Kit(tb, fx, bid).(*KitApp)} })
+	}()
+	<-done
+	if !rec.Failed() {
+		t.Fatal("the scenario passed v0.1's whole-claim removal")
+	}
+	t.Logf("caught: %s", rec.logs[0])
+}
 
 func TestSuiteCatchesNaiveApp(t *testing.T) {
 	mustFail := map[string]bool{"ReuseWithoutDownload": true, "DeleteKeepsSharedModel": true, "DeleteWhileDownloading": true, "DeleteWhileLoaded": true, "DeleteForAllApps": true}

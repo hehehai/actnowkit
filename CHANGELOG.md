@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.2.0 — 2026-10-17
+
+- `models`: a claim names every model of the app that uses the repo
+  (`Claim.Models`, a new member: claims files stay `actnow.models.claims/1`,
+  and files without it read as before, `model` alone). Claiming merges the
+  names (and the file lists); `Store.Release(ref, model)` removes one name,
+  and the claim goes with the last; `Store.DeleteModel(ctx, ref, model,
+  scope)` removes one model: when other models of the app still use the
+  repo, ThisApp keeps the claim and the files (`Result.OwnModels`).
+  `Decision.MyModels`. So deleting one of two models that share an
+  auxiliary repo no longer drops the other's claim on it.
+- `models`: `HeldLock.Downgrade` (exclusive → shared); `family`:
+  `Lock.Convert`.
+- `hfhub`: `Client.Delete` removes the entry by its id (`DeleteModel`) from
+  its main and auxiliary repos.
+- `conformance`: the `CatalogApp` interface and the `SharedRepoWithinApp`
+  scenario; sample `claims-models.json`.
+
 ## v0.1.0 — 2026-10-17
 
 First release: the first phase of the ActNow family protocol (spec v1.0.2).

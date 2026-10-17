@@ -7,6 +7,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -553,5 +555,128 @@ func TestPins(t *testing.T) {
 	}
 	if len(PinsOfFamily("qwen3-asr")) < 2 || len(PinsOfApp("dicta")) < 9 {
 		t.Error("pin queries")
+	}
+}
+
+func TestSharedWithinApp(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s := e.store("dev.hehehai.audiosmith")
+	snap(t, e.hub, repoA, revA, asrFiles())                                           // a main repo
+	snap(t, e.hub, repoB, revB, map[string]string{"model.safetensors": "gemma"})      // another main repo
+	tok := Ref{"openai/whisper-large-v3", "06f233fe06e710322aca913c1bc4249a0d71fce1"} // the shared aux
+	snap(t, e.hub, tok.Repo, tok.Revision, map[string]string{"vocab.json": "{}"})
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(s.Claim(ctx, Claim{Repo: repoA, Revision: revA, Model: "turbo"}, Claim{Repo: tok.Repo, Revision: tok.Revision, Model: "turbo", Aux: true, Files: []string{"vocab.json"}}))
+	must(s.Claim(ctx, Claim{Repo: repoB, Revision: revB, Model: "large"}, Claim{Repo: tok.Repo, Revision: tok.Revision, Model: "large", Aux: true}))
+	cf, _ := s.Claims()
+	c, _ := cf.Find(tok)
+	if c.Model != "turbo" || !slices.Equal(c.Models, []string{"large", "turbo"}) || c.Files != nil || !c.Aux {
+		t.Fatalf("merged claim %+v", c)
+	}
+	if d, _ := s.Decide(tok); !slices.Equal(d.MyModels, []string{"large", "turbo"}) {
+		t.Errorf("my models %v", d.MyModels)
+	}
+	// Removing "turbo": its main repo goes, the shared aux stays claimed for "large".
+	res, err := s.DeleteModel(ctx, Ref{repoA, revA}, "turbo", ThisApp)
+	if err != nil || !res.Deleted {
+		t.Fatalf("turbo main: %+v %v", res, err)
+	}
+	res, err = s.DeleteModel(ctx, tok, "turbo", ThisApp)
+	if err != nil || res.Deleted || !slices.Equal(res.OwnModels, []string{"large"}) {
+		t.Fatalf("turbo aux: %+v %v", res, err)
+	}
+	cf, _ = s.Claims()
+	if c, ok := cf.Find(tok); !ok || c.Model != "large" || !slices.Equal(c.Users(), []string{"large"}) {
+		t.Fatalf("aux claim after removing turbo: %+v %v", c, ok)
+	}
+	if Check(e.hub, Claim{Repo: tok.Repo, Revision: tok.Revision, Aux: true}).State != Installed {
+		t.Fatal("aux files deleted")
+	}
+	// The last user: everything goes.
+	res, err = s.DeleteModel(ctx, tok, "large", ThisApp)
+	if err != nil || !res.Deleted || len(res.OwnModels) != 0 {
+		t.Fatalf("large aux: %+v %v", res, err)
+	}
+	// AllApps deletes even when another model of the app uses it, and says so.
+	snap(t, e.hub, tok.Repo, tok.Revision, map[string]string{"vocab.json": "{}"})
+	must(s.Claim(ctx, Claim{Repo: tok.Repo, Revision: tok.Revision, Model: "x", Aux: true}, Claim{Repo: tok.Repo, Revision: tok.Revision, Model: "y", Aux: true}))
+	res, err = s.DeleteModel(ctx, tok, "x", AllApps)
+	if err != nil || !res.Deleted || !slices.Equal(res.OwnModels, []string{"y"}) {
+		t.Fatalf("all apps: %+v %v", res, err)
+	}
+	if cf, _ := s.Claims(); len(cf.Claims) != 1 { // repoB's claim
+		t.Errorf("claims left %+v", cf.Claims)
+	}
+}
+
+func TestReleaseLegacyClaims(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	s := e.store("dev.hehehai.dicta")
+	snap(t, e.hub, repoA, revA, asrFiles())
+	// A claims file from v0.1 (model, no models).
+	os.WriteFile(e.fam.ClaimsFile(s.BundleID), []byte(`{"schema":"actnow.models.claims/1","app":"dicta","bundleId":"dev.hehehai.dicta","root":`+strconv.Quote(e.hub)+`,"claims":[{"repo":"`+repoA+`","revision":"`+revA+`","model":"old","files":null,"aux":false,"since":"2026-10-20T08:00:00Z"}]}`), 0o600)
+	if err := s.Claim(ctx, Claim{Repo: repoA, Revision: revA, Model: "new"}); err != nil {
+		t.Fatal(err)
+	}
+	cf, _ := s.Claims()
+	if c, _ := cf.Find(Ref{repoA, revA}); c.Model != "old" || !slices.Equal(c.Users(), []string{"new", "old"}) {
+		t.Fatalf("%+v", c)
+	}
+	if rest, err := s.Release(Ref{repoA, revA}, "unknown"); err != nil || len(rest) != 2 {
+		t.Errorf("releasing a model that does not use it: %v %v", rest, err)
+	}
+	if rest, err := s.Release(Ref{repoA, revA}, "old"); err != nil || !slices.Equal(rest, []string{"new"}) {
+		t.Errorf("%v %v", rest, err)
+	}
+	if rest, err := s.Release(Ref{repoA, revA}, "new"); err != nil || len(rest) != 0 {
+		t.Errorf("%v %v", rest, err)
+	}
+	if cf, _ := s.Claims(); len(cf.Claims) != 0 {
+		t.Errorf("claim left %+v", cf.Claims)
+	}
+	// A claim naming no model goes at once.
+	s.Claim(ctx, Claim{Repo: repoA, Revision: revA})
+	if rest, _ := s.Release(Ref{repoA, revA}, "whatever"); len(rest) != 0 {
+		t.Error(rest)
+	}
+	if cf, _ := s.Claims(); len(cf.Claims) != 0 {
+		t.Errorf("claim left %+v", cf.Claims)
+	}
+}
+
+func TestDowngrade(t *testing.T) {
+	hub := t.TempDir()
+	ctx := context.Background()
+	l, err := LockRepo(ctx, hub, repoA, family.Exclusive, Owner{BundleID: "a", Op: OpFinish})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := TryLockRepo(hub, repoA, family.Shared, Owner{BundleID: "b"}); !errors.Is(err, family.ErrLocked) {
+		t.Fatal("shared while exclusive")
+	}
+	if err := l.Downgrade(ctx, OpDownload); err != nil || l.Mode() != family.Shared {
+		t.Fatal(err, l.Mode())
+	}
+	other, err := TryLockRepo(hub, repoA, family.Shared, Owner{BundleID: "b"})
+	if err != nil {
+		t.Fatal("shared after downgrade:", err)
+	}
+	if _, err := TryLockRepo(hub, repoA, family.Exclusive, Owner{BundleID: "c"}); !errors.Is(err, family.ErrLocked) {
+		t.Fatal("exclusive while shared")
+	}
+	other.Release()
+	if err := l.Upgrade(ctx, OpFinish); err != nil || l.Mode() != family.Exclusive {
+		t.Fatal(err)
+	}
+	l.Release()
+	if err := l.Downgrade(ctx, OpDownload); err == nil {
+		t.Error("downgrade of a released lock")
 	}
 }

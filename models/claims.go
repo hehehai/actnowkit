@@ -39,10 +39,16 @@ const (
 type Claim struct {
 	Repo     string `json:"repo"`
 	Revision string `json:"revision"`
-	Model    string `json:"model,omitempty"`  // the app's catalogue id
-	Family   string `json:"family,omitempty"` // model series: "qwen3-asr"
-	Role     string `json:"role,omitempty"`
-	Bytes    int64  `json:"bytes,omitempty"`
+	Model    string `json:"model,omitempty"` // the app's catalogue id (the first model that claimed it)
+	// Models are every catalogue entry of the app that uses the repo:
+	// an auxiliary repo (a tokenizer) shared by two models of one app is
+	// one claim with both. Removing one model releases only its name
+	// (Store.Release, Store.DeleteModel); the claim goes with the last.
+	// Absent in files of older writers: Model alone counts.
+	Models []string `json:"models,omitempty"`
+	Family string   `json:"family,omitempty"` // model series: "qwen3-asr"
+	Role   string   `json:"role,omitempty"`
+	Bytes  int64    `json:"bytes,omitempty"`
 	// Files lists the files used when only part of the repo is (globs
 	// allowed: "v3/*"); nil = the whole snapshot.
 	Files  []string     `json:"files"`
@@ -64,6 +70,52 @@ func (c Claim) MarshalJSON() ([]byte, error) {
 
 // Ref is the claim's identity.
 func (c Claim) Ref() Ref { return Ref{Repo: c.Repo, Revision: c.Revision} }
+
+// Users are the app's models using the claimed repo: Models and Model,
+// each once, sorted; empty when the claim names none.
+func (c Claim) Users() []string {
+	out := slices.Clone(c.Models)
+	if c.Model != "" {
+		out = append(out, c.Model)
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+// merge folds a new claim of the same ref into an existing one: models
+// and files are united (no file list = the whole snapshot), the first
+// model, since and origin are kept.
+func merge(old, c Claim) Claim {
+	users := append(old.Users(), c.Users()...)
+	slices.Sort(users)
+	users = slices.Compact(users)
+	if old.Model != "" {
+		c.Model = old.Model
+	}
+	c.Models = nil
+	if len(users) > 0 {
+		c.Models = users
+	}
+	if old.Files == nil || c.Files == nil {
+		c.Files = nil
+	} else {
+		f := append(slices.Clone(old.Files), c.Files...)
+		slices.Sort(f)
+		c.Files = slices.Compact(f)
+	}
+	if c.Family == "" {
+		c.Family = old.Family
+	}
+	if c.Role == "" {
+		c.Role = old.Role
+	}
+	c.Aux = c.Aux && old.Aux
+	c.Since, c.Extra = old.Since, mergeExtra(old.Extra, c.Extra)
+	if old.Origin != "" {
+		c.Origin = old.Origin // keep how it first came
+	}
+	return c
+}
 
 // Claims is one app's claims file, models/claims/<bundle id>.json. Only
 // that app writes it.
@@ -271,14 +323,13 @@ func (s *Store) ClaimLocked(ctx context.Context, c Claim) error {
 	if c.Bytes == 0 {
 		c.Bytes = st.Bytes
 	}
+	if users := c.Users(); len(users) > 0 {
+		c.Models = users
+	}
 	if err := s.update(func(f *Claims) bool {
 		for i, x := range f.Claims {
 			if x.Ref() == c.Ref() {
-				c.Since, c.Extra = x.Since, mergeExtra(x.Extra, c.Extra)
-				if x.Origin != "" {
-					c.Origin = x.Origin // keep how it first came
-				}
-				f.Claims[i] = c
+				f.Claims[i] = merge(x, c)
 				return true
 			}
 		}
@@ -318,6 +369,38 @@ func (s *Store) Unclaim(refs ...Ref) error {
 		f.Claims = slices.DeleteFunc(f.Claims, func(c Claim) bool { return slices.Contains(refs, c.Ref()) })
 		return len(f.Claims) != n
 	})
+}
+
+// Release removes one model (a catalogue id) from this app's claim on
+// ref: the claim stays while other models of the app still use the repo
+// (remaining lists them) and goes with the last one. A claim naming no
+// model at all, or model "", goes at once. Files are not touched: see
+// DeleteModel.
+func (s *Store) Release(ref Ref, model string) (remaining []string, err error) {
+	err = s.update(func(f *Claims) bool {
+		for i, x := range f.Claims {
+			if x.Ref() != ref {
+				continue
+			}
+			users := slices.DeleteFunc(x.Users(), func(u string) bool { return u == model })
+			if model == "" || len(users) == 0 {
+				f.Claims = slices.Delete(f.Claims, i, i+1)
+				return true
+			}
+			remaining = users
+			if len(users) == len(x.Users()) {
+				return false // model did not use it
+			}
+			x.Models = users
+			if x.Model == model {
+				x.Model = users[0]
+			}
+			f.Claims[i] = x
+			return true
+		}
+		return false
+	})
+	return remaining, err
 }
 
 // Rehome moves this app's claims to the hub s.Hub after the app's model

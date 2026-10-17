@@ -166,6 +166,25 @@ func (l *HeldLock) Upgrade(ctx context.Context, op string) error {
 	return nil
 }
 
+// Downgrade turns an exclusive repo lock into a shared one, e.g. to keep
+// holding a repo (against deletion) while waiting for others, after
+// finishing its snapshot. Not atomic either (family.Lock.Convert): re-check
+// afterwards. On error the lock is no longer held; Release it.
+func (l *HeldLock) Downgrade(ctx context.Context, op string) error {
+	if l.lock == nil {
+		return errors.New("models: downgrade of a released lock")
+	}
+	if l.lock.Mode == family.Shared {
+		return nil
+	}
+	if err := l.lock.Convert(ctx, family.Shared); err != nil {
+		return err
+	}
+	l.owner.Op, l.owner.Since = op, family.Now()
+	l.writeOwner()
+	return nil
+}
+
 // TryLockRepo takes the repo lock without waiting: *BusyError when held.
 // Downloads and claims take it Shared; finishing a snapshot and deleting
 // take it Exclusive (spec §7.4). Deleting never waits: tell the user to

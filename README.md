@@ -18,11 +18,11 @@ package checks either.
   they compile to no-ops, so the logic is tested on Linux.
 - No UI, no dependency on MyGo, no i18n: packages export English and Chinese
   reference strings (`family.Text`) for apps to put in their own catalogues.
-- Status: **v0.1** — `hfhub` is experimental; the other packages follow the
+- Status: **v0.2** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.1.0
+go get github.com/hehehai/actnowkit@v0.2.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
@@ -34,7 +34,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | --- | --- |
 | [`family`](family) | The family directory (`$FAMILY`), the JSON file rules (schema versions, unknown members kept, atomic replacement, corrupt files set aside), `flock` locks, change notifications (`notify_post` / `notify_register_file_descriptor`), the table of family apps and bundle-id variants. |
 | [`registry`](registry) | Each app's manifest (`apps/<bundle id>.json`: version, path, capabilities, shortcuts, services), and discovery: manifests + LaunchServices + running processes → which family apps are installed and running. |
-| [`models`](models) | The shared model library (`$HUB`, the Hugging Face cache): resolving it, claims ("I use repo@commit"), repo and blob locks compatible with huggingface_hub's `.locks/`, the installed check, delete decisions and deletion that keep other apps' models, tombstones, orphan clean-up, disk usage, the family pins table, model licence acceptances. |
+| [`models`](models) | The shared model library (`$HUB`, the Hugging Face cache): resolving it, claims ("I use repo@commit", naming every model of the app that uses it), repo and blob locks compatible with huggingface_hub's `.locks/`, the installed check, delete decisions and deletion that keep other apps' models, tombstones, orphan clean-up, disk usage, the family pins table, model licence acceptances. |
 | [`hfhub`](hfhub) | *Experimental.* A Hugging Face downloader on top of `models`: mirrors raced, parallel ranged downloads, resume (including another app's partial files), verification, and the family locks and claims. |
 | [`settings`](settings) | `settings.json` (language, proxy, Hugging Face endpoints, model folder), "follow the family" flags, the first-run migration of an app's own values. |
 | [`credentials`](credentials) | Shared API keys: the vendor table, the login-Keychain item `ActNow` / `vendor.<id>` through `/usr/bin/security`, `credentials.json` (hint, fingerprint, users), the consent flow. |
@@ -181,10 +181,24 @@ res, err := store.Delete(ctx, d.Ref, models.ThisApp) // res.Deleted is false whe
 var busy *models.BusyError
 if errors.As(err, &busy) { /* models.TextBusy: another app is downloading it */ }
 
+// One catalogue model of several sharing a repo (an auxiliary tokenizer):
+// claim with the model's id, and remove by it. The claim keeps the other
+// models' names, and the files stay while any of them uses the repo.
+store.Claim(ctx, models.Claim{Repo: tok, Revision: tokCommit, Model: "whisper-turbo", Aux: true})
+res, err = store.DeleteModel(ctx, models.Ref{Repo: tok, Revision: tokCommit}, "whisper-turbo", models.ThisApp)
+// res.OwnModels lists this app's other models still using it; store.Release only edits the claim.
+
 // Storage page.
 usage, _ := store.Usage()       // usage.Mine vs usage.Shared
 orphans, _ := store.Orphans()   // models only uninstalled apps claimed; store.CleanOrphans(ctx, bid)
 ```
+
+`hfhub.Client.Delete(ctx, entry, scope)` does this for an entry's main
+and auxiliary repos.
+
+Locks: `models.LockRepo` / `TryLockRepo` (shared to download or claim,
+exclusive to finish or delete), `HeldLock.Upgrade` and `HeldLock.Downgrade`
+(not atomic: re-check after either), `models.LockBlob` / `TryLockBlob`.
 
 Engines must be given the snapshot path (`models.SnapshotDir(hub, ref)`),
 never pick a snapshot themselves.
@@ -243,13 +257,13 @@ in an adapter:
 ```go
 func TestFamilyConformance(t *testing.T) {
 	conformance.Run(t, func(t testing.TB, fx *conformance.Fixture, bundleID string) any {
-		return newAdapter(fx.Family.Root, fx.Hub, bundleID) // implements conformance.ModelApp, Downloader, SettingsApp…
+		return newAdapter(fx.Family.Root, fx.Hub, bundleID) // implements conformance.ModelApp, CatalogApp, Downloader, SettingsApp…
 	})
 }
 ```
 
 The scenarios cover model reuse without downloading, deletion protection
-(claims, locks, loaded models), deleting for all apps (tombstones),
+(claims, locks, loaded models), repos shared by several models of one app, deleting for all apps (tombstones),
 concurrent and resumed downloads against another app, settings that follow
 the family, shortcut conflicts, cleaning up after an uninstalled app, and
 forward compatibility. `conformance.KitApp` is the adapter of actnowkit

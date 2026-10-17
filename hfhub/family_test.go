@@ -481,3 +481,59 @@ func TestWaitForPythonTool(t *testing.T) {
 		t.Errorf("served %d, want %d (the tool's blob is not fetched)", got, want)
 	}
 }
+
+// Two entries of one app share repos (here the auxiliary one, and even
+// the main one): deleting one entry keeps what the other still uses.
+func TestFamilySharedWithinApp(t *testing.T) {
+	h := newFakeHub(t)
+	g2p := newFakeHub(t)
+	g2p.repo = "acme/g2p"
+	g2p.files = map[string][]byte{"config.json": []byte(`{"g2p":1}`), "g2p.safetensors": bytes.Repeat([]byte{3}, 3000)}
+	g2p.lfs = map[string]bool{"g2p.safetensors": true}
+	both := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/acme/g2p/") {
+			g2p.serve(w, r)
+		} else {
+			h.serve(w, r)
+		}
+	}))
+	defer both.Close()
+	env := newFamEnv(t)
+	c, s := env.app(t, both.URL, bidDicta, nil)
+	ctx := context.Background()
+	a := pinned(h)
+	a.Aux = []Aux{{Repo: "acme/g2p", Revision: testCommit}}
+	b := a
+	b.ID = "tiny-b"
+	aux := models.Ref{Repo: "acme/g2p", Revision: testCommit}
+	for _, e := range []Entry{a, b} {
+		if err := c.Download(ctx, e, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if cl, ok := claimOn(t, s, aux); !ok || !slices.Equal(cl.Users(), []string{"tiny", "tiny-b"}) {
+		t.Fatalf("aux claim %+v", cl)
+	}
+	res, err := c.Delete(ctx, a, models.ThisApp)
+	if err != nil || len(res) != 2 {
+		t.Fatalf("%+v %v", res, err)
+	}
+	for _, r := range res {
+		if r.Deleted || !slices.Equal(r.OwnModels, []string{"tiny-b"}) {
+			t.Errorf("deleting tiny: %+v", r)
+		}
+	}
+	if cl, ok := claimOn(t, s, aux); !ok || !slices.Equal(cl.Users(), []string{"tiny-b"}) {
+		t.Errorf("aux claim after deleting tiny: %+v %v", cl, ok)
+	}
+	if l, _ := c.Status(ctx, b); l.State != Downloaded {
+		t.Errorf("tiny-b broken: %+v", l)
+	}
+	res, err = c.Delete(ctx, b, models.ThisApp)
+	if err != nil || len(res) != 2 || !res[0].Deleted || !res[1].Deleted {
+		t.Fatalf("deleting tiny-b: %+v %v", res, err)
+	}
+	if _, ok := claimOn(t, s, aux); ok {
+		t.Error("aux claim left")
+	}
+}

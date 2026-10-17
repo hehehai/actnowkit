@@ -64,6 +64,23 @@ func (k *KitApp) Remove(ctx context.Context, ref models.Ref, allApps bool) error
 	return err
 }
 
+func (k *KitApp) UseModel(ctx context.Context, model string, refs ...models.Ref) error {
+	var errs []error
+	for _, r := range refs {
+		errs = append(errs, k.store.Claim(ctx, models.Claim{Repo: r.Repo, Revision: r.Revision, Model: model, Origin: models.OriginReused}))
+	}
+	return errors.Join(errs...)
+}
+
+func (k *KitApp) RemoveModel(ctx context.Context, model string, refs ...models.Ref) error {
+	var errs []error
+	for _, r := range refs {
+		_, err := k.store.DeleteModel(ctx, r, model, models.ThisApp)
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
 func (k *KitApp) Download(ctx context.Context, endpoint string, ref models.Ref) error {
 	c := hfhub.New(hfhub.Options{Store: k.store, Endpoints: []string{endpoint}, ReserveBytes: -1})
 	return c.Download(ctx, hfhub.Entry{ID: filepath.Base(ref.Repo), Repo: ref.Repo, Revision: ref.Revision}, nil)
