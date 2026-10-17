@@ -136,23 +136,13 @@
       "apps": ["voxtnew"]
     },
     {
-      "repo": "majentik/MOSS-Transcribe-Diarize-MLX-8bit",
-      "revision": "81c2ff528a94cffe88d2124523707b3f442ddbd2",
-      "family": "moss-transcribe-diarize",
-      "quant": "8bit",
-      "role": "asr",
-      "bytes": 1269853976,
-      "apps": ["dicta"],
-      "note": "AudioSmith uses vanch007/mlx-MOSS-Transcribe-Diarize-8bit for the same model: the two apps should settle on one repo."
-    },
-    {
       "repo": "vanch007/mlx-MOSS-Transcribe-Diarize-8bit",
       "revision": "7210aef739be6b9e068fba9b1d60369ec053655b",
       "family": "moss-transcribe-diarize",
       "quant": "8bit",
       "role": "asr",
       "bytes": 1269855425,
-      "apps": ["audiosmith"]
+      "apps": ["audiosmith", "dicta"]
     }
   ]
 }

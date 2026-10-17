@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.2 — 2026-10-17
+
+- `models`: pins: Dicta and AudioSmith share one MOSS Transcribe Diarize
+  repo, `vanch007/mlx-MOSS-Transcribe-Diarize-8bit` (Dicta moved to it in
+  its 736f427); the `majentik/MOSS-Transcribe-Diarize-MLX-8bit` pin, which
+  no app's catalogue has any more, is gone. `PinsOfApp("dicta")` now
+  includes the shared repo, so AudioSmith's phase-0 check keeps it for
+  Dicta.
+
 ## v0.2.1 — 2026-10-17
 
 - macOS: the AppKit lookups (`registry.DefaultSystem.AppPaths`, `Running`,
