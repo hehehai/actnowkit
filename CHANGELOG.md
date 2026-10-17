@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.3.0 — 2026-10-17
+
+- New package `listsel`: the row selection of the apps' log views, with no
+  UI. `Model[K]` holds the rows selected by stable key, the anchor and the
+  pointer gesture: a plain click copies its row (`CopyRow`) and sets the
+  anchor, Shift-click selects a range, ⌘-click toggles a row, pressing and
+  moving more than `DragSlop` selects by dragging (⌘ adds), `SelectAll`,
+  `Clear`, `Cancel`, and `Prune` as filters change and lines rotate out.
+  `Items` and `Text` format the lines to copy; `TextSelected` … `TextCopied`
+  are reference wordings in English and Chinese. Nothing else changed.
+
 ## v0.2.2 — 2026-10-17
 
 - `models`: pins: Dicta and AudioSmith share one MOSS Transcribe Diarize

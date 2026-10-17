@@ -18,11 +18,11 @@ package checks either.
   they compile to no-ops, so the logic is tested on Linux.
 - No UI, no dependency on MyGo, no i18n: packages export English and Chinese
   reference strings (`family.Text`) for apps to put in their own catalogues.
-- Status: **v0.2** — `hfhub` is experimental; the other packages follow the
+- Status: **v0.3** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.2.2
+go get github.com/hehehai/actnowkit@v0.3.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
@@ -40,6 +40,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`credentials`](credentials) | Shared API keys: the vendor table, the login-Keychain item `ActNow` / `vendor.<id>` through `/usr/bin/security`, `credentials.json` (hint, fingerprint, users), the consent flow. |
 | [`shortcuts`](shortcuts) | Canonical key combinations, the conflict rule, who shows the conflict prompt, the family's default assignments. |
 | [`runtime`](runtime) | Running-process files (`runtime/<bundle id>.json`: loaded models, memory budget, pasting flag) and the family memory budget. |
+| [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
 | [`cmd/actnow-conformance`](cmd/actnow-conformance) | Inspect a real family directory on a Mac: `check`, `discover`, `claims`, `lock`, `watch`, `pins`. |
 
@@ -248,6 +249,46 @@ famruntime.Write(fam, famruntime.File{BundleID: bundleID, BudgetBytes: budget, L
 ```
 
 (`famruntime` is `github.com/hehehai/actnowkit/runtime` imported under another name.)
+
+### Log selection
+
+`listsel.Model[K]` is the selection behind every app's log view, so the
+same gestures do the same thing everywhere. `K` is a stable key of a row
+(the log's sequence number), never its place in the list. The view reports
+the primary button's press, moves and release with the row under the
+pointer, and draws `IsSelected`:
+
+| Gesture | What happens |
+| --- | --- |
+| Click (no modifier, no drag) | `Release` returns `CopyRow`: copy that line. The selection clears; the row becomes the anchor, not shown selected. |
+| Shift-click | The rows from the anchor to this one, in display order. |
+| ⌘-click (Ctrl elsewhere) | Add the row or take it out; it becomes the anchor. |
+| Press and move more than `DragSlop` (4 DIPs) | Select from the row pressed to the row under the pointer, up or down; with ⌘ held, add them. |
+| ⌘A / Esc | `SelectAll(shown)` / `Clear()` (the anchor stays). |
+| Right-click, Control-click on macOS | The context menu (the app's): not reported to the Model. |
+
+```go
+var sel listsel.Model[uint64]          // with the view's state
+
+sel.Prune(shownKeys)                   // every build: lines filtered out or rotated away leave the selection
+// pointer down (primary) on a row:
+sel.Press(row.Seq, x, y, mods)         // mods: listsel.Extend (Shift) | listsel.Toggle (⌘)
+// pointer moved while down:
+if sel.Move(x, y, rowUnder, overRow, shownKeys) { redraw() }
+// pointer up:
+if in, k := sel.Release(shownKeys); in == listsel.CopyRow { copyLines(k) }
+// Esc while dragging: sel.Cancel(); else sel.Clear()
+
+picked := listsel.Items(&sel, shown, func(e Entry) uint64 { return e.Seq })
+clipboard(listsel.Text(picked, format)) // lines end in "\n"; a single line has none
+sel.Clear()                            // copying clears the selection
+```
+
+`listsel.TextSelected`, `TextCopy`, `TextDeselect`, `TextCopyLine`,
+`TextCopySelected`, `TextCopyShown` and `TextCopied` are the reference
+wordings (English and Chinese) for the apps' catalogues. The family's
+interaction spec (header, context menu, colours, tests) is VoxtNew's
+reference implementation.
 
 ## Conformance
 
