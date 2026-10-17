@@ -36,6 +36,9 @@ var Defaults = []Default{
 	{"pik", Shortcut{ID: "toggleColorDock", Title: "Show/Hide Color Dock", Keys: "Control+Option+Command+D", Trigger: Press, Mechanism: Carbon}},
 	{"pik", Shortcut{ID: "getPrimaryColor", Title: "Get Primary Color", Keys: "Control+Option+Command+F", Trigger: Press, Mechanism: Carbon}},
 	{"pik", Shortcut{ID: "getSecondaryColor", Title: "Get Secondary Color", Keys: "Control+Option+Command+B", Trigger: Press, Mechanism: Carbon}},
+
+	// HereNow: opens the menu bar panel.
+	{"herenow", Shortcut{ID: "openPanel", Title: "Open HereNow", Keys: "Control+Option+Command+H", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 }
 
 // DefaultsOf lists an app's default shortcuts.

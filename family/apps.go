@@ -21,7 +21,7 @@ type App struct {
 
 // Teams of the family (spec §17 Q1).
 const (
-	TeamActNow  = "779M533DL5" // AudioSmith, Auralink, Dicta, Pik
+	TeamActNow  = "779M533DL5" // AudioSmith, Auralink, Dicta, Pik, HereNow
 	TeamVoxtNew = "RY2TQTYSKQ" // VoxtNew
 )
 
@@ -38,6 +38,7 @@ var Apps = []App{
 	{ID: "auralink", Name: "Auralink", BundleID: "dev.hehehai.auralink", URLScheme: "auralink", ProductURL: "https://actnow.dev/auralink", TeamID: TeamActNow},
 	{ID: "voxtnew", Name: "VoxtNew", BundleID: "dev.hehehai.voxtnew", URLScheme: "voxtnew", ProductURL: "", TeamID: TeamVoxtNew},
 	{ID: "pik", Name: "Pik", BundleID: "dev.hehehai.pik", URLScheme: "pik", ProductURL: "https://actnow.dev/pik", TeamID: TeamActNow},
+	{ID: "herenow", Name: "HereNow", BundleID: "dev.hehehai.herenow", URLScheme: "herenow", ProductURL: "https://actnow.dev/herenow", TeamID: TeamActNow},
 }
 
 // AppByID finds an app of the table by id ("dicta").
