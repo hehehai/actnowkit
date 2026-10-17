@@ -1,0 +1,58 @@
+# Linux: vet, staticcheck, the tests with the race detector, and pure-Go
+# builds for every target. macOS (Apple silicon): the tests again, with
+# the parts only a Mac has (Darwin notifications, LaunchServices,
+# NSRunningApplication, the security tool against a temporary keychain,
+# scutil) switched on by ACTNOWKIT_MAC=1.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: vet
+        run: go vet ./... && GOOS=darwin GOARCH=arm64 go vet ./...
+      - name: staticcheck
+        run: |
+          go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
+          GOOS=darwin GOARCH=arm64 go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
+      - name: build (CGO_ENABLED=0)
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          for t in linux/amd64 darwin/arm64 darwin/amd64 windows/amd64; do
+            GOOS=${t%/*} GOARCH=${t#*/} go build ./... || exit 1
+          done
+      - name: test
+        run: go test -race -count=1 ./...
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: test
+        env:
+          ACTNOWKIT_MAC: "1"
+        run: go test -race -count=1 -v ./... 2>&1 | tee test.log | grep -E '^(=== RUN|--- |ok|FAIL|PASS)' ; exit ${PIPESTATUS[0]}
+      - name: test (CGO_ENABLED=0)
+        env:
+          ACTNOWKIT_MAC: "1"
+          CGO_ENABLED: "0"
+        run: go test -count=1 ./...
