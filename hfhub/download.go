@@ -385,6 +385,18 @@ func (c *Client) waitBlob(ctx context.Context, repo, blob string, waiting func(o
 			return lock, err
 		}
 		owner := UnknownOwner
+		if be.Owner == nil {
+			// The holder writes its owner file just after taking the
+			// lock: look again before calling it unknown.
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(25 * time.Millisecond):
+			}
+			if o, ok := models.ReadOwner(models.BlobLockFile(c.opts.CacheDir, repo, blob)); ok {
+				be.Owner = &o
+			}
+		}
 		if be.Owner != nil && be.Owner.BundleID != "" {
 			owner = be.Owner.BundleID
 		}
