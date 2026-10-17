@@ -50,7 +50,11 @@ jobs:
       - name: test
         env:
           ACTNOWKIT_MAC: "1"
-        run: go test -race -count=1 -v ./... 2>&1 | tee test.log | grep -E '^(=== RUN|--- |ok|FAIL|PASS)' ; exit ${PIPESTATUS[0]}
+        run: go test -race -count=1 ./...
+      - name: the Mac-only tests, verbose
+        env:
+          ACTNOWKIT_MAC: "1"
+        run: go test -count=1 -v -run 'TestMac|TestNotify' ./...
       - name: test (CGO_ENABLED=0)
         env:
           ACTNOWKIT_MAC: "1"
