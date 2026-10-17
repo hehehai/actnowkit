@@ -18,8 +18,8 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: gofmt
@@ -28,8 +28,9 @@ jobs:
         run: go vet ./... && GOOS=darwin GOARCH=arm64 go vet ./...
       - name: staticcheck
         run: |
-          go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
-          GOOS=darwin GOARCH=arm64 go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
+          go install honnef.co/go/tools/cmd/staticcheck@2026.2.2
+          "$(go env GOPATH)/bin/staticcheck" ./...
+          GOOS=darwin GOARCH=arm64 "$(go env GOPATH)/bin/staticcheck" ./...
       - name: build (CGO_ENABLED=0)
         env:
           CGO_ENABLED: "0"
@@ -43,8 +44,8 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - name: test
