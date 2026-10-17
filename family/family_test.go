@@ -296,6 +296,10 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.auralink.betatest", "auralink", Test, nil},
 		{"dev.hehehai.pik.m7", "pik", Test, nil},
 		{"dev.hehehai.voxtnew.overlaycheck", "voxtnew", Test, nil},
+		{"dev.hehehai.captioncraft", "captioncraft", Release, nil},
+		{"dev.hehehai.captioncraft.dev", "captioncraft", Dev, nil},
+		{"dev.hehehai.captioncraft.updtest", "captioncraft", Test, nil},
+		{"dev.hehehai.captioncraft.engine", "captioncraft", "", ErrComponent},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -317,6 +321,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("voxtnew"); a.TeamID != TeamVoxtNew {
 		t.Error("VoxtNew team")
+	}
+	if a, _ := AppByID("captioncraft"); a.TeamID != TeamActNow || a.URLScheme != "captioncraft" || a.ProductURL != "https://actnow.dev/captioncraft" {
+		t.Error("CaptionCraft row")
 	}
 }
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- `family`: CaptionCraft joins the table (`captioncraft`,
+  `dev.hehehai.captioncraft`, URL scheme `captioncraft`,
+  https://actnow.dev/captioncraft, team `TeamActNow`). It has no global
+  shortcut, so `shortcuts.Defaults` is unchanged.
+- `registry`: new capability `CapSubtitles` (`"subtitles"`): the app makes
+  video subtitles and opens `<scheme>://import?path=<file>` for a file
+  another app hands over (Dicta's "Make subtitles in CaptionCraft").
+
 ## v0.3.0 — 2026-10-17
 
 - New package `listsel`: the row selection of the apps' log views, with no
