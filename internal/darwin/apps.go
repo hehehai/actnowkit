@@ -103,8 +103,14 @@ func goString(str objc.ID) string {
 	return string(unsafe.Slice(*(**byte)(unsafe.Pointer(&p)), n))
 }
 
-// withPool runs fn inside an autorelease pool.
+// withPool runs fn inside an autorelease pool. An autorelease pool belongs
+// to the thread that pushed it, so the goroutine stays on one OS thread from
+// the push to the pop: otherwise the Go scheduler may move it in between,
+// and the pop (or an autorelease) lands on another thread's pool stack, which
+// crashes. Callers may be any goroutine.
 func withPool(fn func()) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	pool := poolPush()
 	defer poolPop(pool)
 	fn()

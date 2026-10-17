@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.1 — 2026-10-17
+
+- macOS: the AppKit lookups (`registry.DefaultSystem.AppPaths`, `Running`,
+  `TeamID`, and so `registry.Discover`) lock the OS thread for the life of
+  their autorelease pool. Called from a goroutine, the scheduler could move
+  the goroutine to another thread between the pool's push and pop, which
+  crashed the process ("semasleep on Darwin signal stack"). Callers no
+  longer need a workaround of their own.
+
 ## v0.2.0 — 2026-10-17
 
 - `models`: a claim names every model of the app that uses the repo

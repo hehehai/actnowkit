@@ -283,3 +283,39 @@ func TestMacSystem(t *testing.T) {
 		t.Logf("%s: installed at %v, running %v", a.BundleID, DefaultSystem.AppPaths(a.BundleID), DefaultSystem.Running(a.BundleID))
 	}
 }
+
+// TestMacSystemGoroutines calls the AppKit-backed lookups from many
+// goroutines at once, with the scheduler forced to move goroutines between
+// threads, so a pool popped on another thread than it was pushed on (no
+// LockOSThread in withPool) crashes here.
+//
+//	ACTNOWKIT_MAC=1 go test -run TestMacSystemGoroutines -race -count=3 ./registry
+func TestMacSystemGoroutines(t *testing.T) {
+	if os.Getenv("ACTNOWKIT_MAC") == "" || runtime.GOOS != "darwin" {
+		t.Skip("set ACTNOWKIT_MAC=1 on a Mac")
+	}
+	dir := family.At(t.TempDir())
+	if _, err := dir.Ensure("dev.actnow.test"); err != nil {
+		t.Fatal(err)
+	}
+	const workers, rounds = 32, 40
+	done := make(chan struct{})
+	for w := 0; w < workers; w++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for i := 0; i < rounds; i++ {
+				_ = DefaultSystem.AppPaths("com.apple.calculator")
+				_ = DefaultSystem.Running("com.apple.finder")
+				_ = TeamID()
+				if _, errs := Discover(dir, DefaultSystem); len(errs) != 0 {
+					t.Error(errs)
+					return
+				}
+				runtime.Gosched()
+			}
+		}()
+	}
+	for w := 0; w < workers; w++ {
+		<-done
+	}
+}
