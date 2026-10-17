@@ -1,9 +1,6 @@
 package family
 
-import (
-	"strings"
-	"sync"
-)
+import "sync"
 
 // Topics of change notifications (spec §5.4). The notification name is
 // NotifyPrefix + topic: "dev.actnow.family.settings".
@@ -157,9 +154,4 @@ func localPost(name string) {
 	for _, fn := range fns {
 		fn(name)
 	}
-}
-
-// validName rejects names notify(3) would misread.
-func validName(name string) bool {
-	return name != "" && !strings.ContainsRune(name, 0)
 }

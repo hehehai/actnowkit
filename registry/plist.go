@@ -20,7 +20,7 @@ func BundleIDAt(appPath string) (string, error) {
 		return "", err
 	}
 	if len(data) > 4<<20 {
-		return "", errors.New("Info.plist too large")
+		return "", errors.New("the Info.plist is too large")
 	}
 	strs, err := plistStrings(data)
 	if err != nil {
@@ -28,7 +28,7 @@ func BundleIDAt(appPath string) (string, error) {
 	}
 	id, ok := strs["CFBundleIdentifier"]
 	if !ok {
-		return "", errors.New("Info.plist has no CFBundleIdentifier")
+		return "", errors.New("no CFBundleIdentifier in the Info.plist")
 	}
 	return id, nil
 }

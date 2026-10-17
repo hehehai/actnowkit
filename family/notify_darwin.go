@@ -6,10 +6,16 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/hehehai/actnowkit/internal/darwin"
 )
+
+// validName rejects names notify(3) would misread.
+func validName(name string) bool {
+	return name != "" && !strings.ContainsRune(name, 0)
+}
 
 // systemNotify is true: notify_post reaches this process's registrations.
 const systemNotify = true

@@ -7,14 +7,14 @@ import (
 )
 
 // TestMacProxy checks what only a Mac has: the system proxy read from
-// scutil. It runs with ACTNOW_MAC=1 on macOS:
+// scutil. It runs with ACTNOWKIT_MAC=1 on macOS:
 //
-//	ACTNOW_MAC=1 go test -run TestMacProxy -v ./hfhub
+//	ACTNOWKIT_MAC=1 go test -run TestMacProxy -v ./hfhub
 //
 // ACTNOW_MAC_PROXY, when set, is the proxy downloads must use.
 func TestMacProxy(t *testing.T) {
-	if os.Getenv("ACTNOW_MAC") == "" || runtime.GOOS != "darwin" {
-		t.Skip("set ACTNOW_MAC=1 on a Mac")
+	if os.Getenv("ACTNOWKIT_MAC") == "" || runtime.GOOS != "darwin" {
+		t.Skip("set ACTNOWKIT_MAC=1 on a Mac")
 	}
 	for _, v := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"} {
 		t.Setenv(v, "")
