@@ -23,6 +23,7 @@ package checks either.
 
 ```sh
 go get github.com/hehehai/actnowkit@v0.1.0
+go mod tidy   # adds purego, which only the darwin files import
 ```
 
 Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
