@@ -35,12 +35,13 @@ func payload(n int) []byte {
 // source is a fake GitHub or mirror.
 type source struct {
 	*httptest.Server
-	body    []byte
-	mode    string        // "ok", "tampered", "404", "stall" (after half), "drip", "delay"
-	delay   time.Duration // "delay": before the headers
-	latest  string        // where /o/r/releases/latest redirects ("" = 404)
-	hits    atomic.Int32
-	release chan struct{} // closed at the test's end: stalled handlers return
+	body       []byte
+	mode       string        // "ok", "tampered", "404", "stall" (after half), "drip", "delay"
+	delay      time.Duration // "delay": before the headers
+	latest     string        // where /o/r/releases/latest redirects ("" = 404)
+	latestJSON string        // or what it answers with (200)
+	hits       atomic.Int32
+	release    chan struct{} // closed at the test's end: stalled handlers return
 }
 
 func newSource(t *testing.T, body []byte, mode string) *source {
@@ -56,6 +57,11 @@ func newSource(t *testing.T, body []byte, mode string) *source {
 func (s *source) serve(w http.ResponseWriter, r *http.Request) {
 	s.hits.Add(1)
 	if r.URL.Path == "/o/r/releases/latest" {
+		if s.latestJSON != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(s.latestJSON))
+			return
+		}
 		if s.latest == "" {
 			http.NotFound(w, r)
 			return
@@ -226,14 +232,47 @@ func TestFileSlowSwitches(t *testing.T) {
 	}
 }
 
-func TestFileLastSourceNotWatched(t *testing.T) {
+func TestFileSlowSourceRetriedOnce(t *testing.T) {
 	body := payload(30 << 10)
-	gh := newSource(t, body, "drip") // slow but the only one
+	gh := newSource(t, body, "drip") // slow and the only one: left once, then let finish
 	c := fast(gh.URL)
 	c.Lead = 8 << 10
+	c.RateWindow = 200 * time.Millisecond
 	from, got, err := get(t, c, digest(body))
 	if err != nil || from != gh.URL || !bytes.Equal(got, body) {
 		t.Fatalf("from %q, err %v", from, err)
+	}
+	if n := gh.hits.Load(); n != 2 {
+		t.Errorf("asked %d times, want 2 (once more on a new connection)", n)
+	}
+}
+
+func TestFileSlowMirrorRetriedBeforeSlowGitHub(t *testing.T) {
+	body := payload(300 << 10)
+	m := newSource(t, body, "drip")
+	gh := newSource(t, body, "delay")
+	gh.delay = 5 * time.Second
+	c := fast(gh.URL, m.URL)
+	c.Lead = 8 << 10
+	c.RateWindow = 200 * time.Millisecond
+	// The mirror crawls on its first connection only.
+	var first atomic.Bool
+	m.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if first.CompareAndSwap(false, true) {
+			m.serve(w, r)
+			return
+		}
+		m.hits.Add(1)
+		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		w.Write(body)
+	})
+	start := time.Now()
+	from, got, err := get(t, c, digest(body))
+	if err != nil || from != m.URL || !bytes.Equal(got, body) {
+		t.Fatalf("from %q, err %v", from, err)
+	}
+	if d := time.Since(start); d > 3*time.Second {
+		t.Errorf("took %v", d)
 	}
 }
 
@@ -320,6 +359,17 @@ func TestLatest(t *testing.T) {
 	bad.latest = "/o/r/releases/tag/nonsense"
 	if _, _, err := fast(bad.URL).Latest(context.Background(), "o/r", ok); err == nil {
 		t.Fatal("an unacceptable tag was taken")
+	}
+	r2 := newSource(t, nil, "ok") // the mirror's R2: JSON, no redirect
+	r2.latestJSON = `{"tag": "2026.10.02", "synced": "2026-10-18T02:00:00Z"}`
+	if tag, _, err := fast(r2.URL).Latest(context.Background(), "o/r", ok); err != nil || tag != "2026.10.02" {
+		t.Fatalf("JSON: tag %q, err %v", tag, err)
+	}
+	for _, body := range []string{`{"tag": "../x"}`, `{"tag": "nonsense"}`, `{}`, `<html>`} {
+		r2.latestJSON = body
+		if tag, _, err := fast(r2.URL).Latest(context.Background(), "o/r", ok); err == nil {
+			t.Errorf("JSON %s: took %q", body, tag)
+		}
 	}
 	elsewhere := newSource(t, nil, "ok")
 	elsewhere.latest = "/o/r/pulls"

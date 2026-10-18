@@ -2,7 +2,8 @@
 // or from the family's mirror, https://mirror.actnow.dev/github, which
 // answers GitHub's paths for the releases the apps need (spec §9.6):
 //
-//	/<owner>/<repo>/releases/latest                    a redirect to …/releases/tag/<tag>
+//	/<owner>/<repo>/releases/latest                    GitHub: a redirect to …/releases/tag/<tag>;
+//	                                                   the mirror: JSON {"tag": "<tag>"}
 //	/<owner>/<repo>/releases/download/<tag>/<asset>    the file
 //
 // GitHub's release files reach many users in China at a few KB/s; the
@@ -22,6 +23,7 @@ package mirror
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -205,9 +207,11 @@ func Try[T any](ctx context.Context, c *Client, fn func(ctx context.Context, bas
 	return zero, "", errors.Join(errs...)
 }
 
-// Latest is the tag of repo's ("owner/name") latest release, from the
-// redirect of /releases/latest, asked of every source at once: the first
-// tag that ok accepts (nil: any) wins.
+// Latest is the tag of repo's ("owner/name") latest release, asked of
+// every source at once: the first tag that ok accepts (nil: any) wins.
+// GitHub answers /releases/latest with a redirect to …/releases/tag/<tag>;
+// the ActNow mirror, files served by R2, which cannot redirect, with
+// JSON {"tag": "<tag>"}. Either answer is read from any source.
 func (c *Client) Latest(ctx context.Context, repo string, ok func(tag string) bool) (string, string, error) {
 	return Try(ctx, c, func(ctx context.Context, base string) (string, error) {
 		hc := *c.client()
@@ -221,7 +225,19 @@ func (c *Client) Latest(ctx context.Context, repo string, ok func(tag string) bo
 		if err != nil {
 			return "", err
 		}
-		resp.Body.Close()
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			var v struct {
+				Tag string `json:"tag"`
+			}
+			if err := json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&v); err != nil || v.Tag == "" {
+				return "", fmt.Errorf("latest release of %s: not a redirect or {\"tag\"}", repo)
+			}
+			if strings.ContainsAny(v.Tag, "/\\") || v.Tag == "." || v.Tag == ".." || (ok != nil && !ok(v.Tag)) {
+				return "", fmt.Errorf("latest release of %s: unexpected tag %q", repo, v.Tag)
+			}
+			return v.Tag, nil
+		}
 		loc := resp.Header.Get("Location")
 		if resp.StatusCode/100 != 3 || loc == "" {
 			return "", &StatusError{URL: u, Status: resp.Status, Code: resp.StatusCode}

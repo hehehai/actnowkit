@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.1 — 2026-10-18
+
+- `mirror`: the ActNow mirror's files are now served by R2 itself
+  (Worker responses reach mainland China at a few KB/s, R2's at MB/s), and
+  R2 cannot redirect: `Client.Latest` also reads a `200` answer with JSON
+  `{"tag": "<tag>"}` (GitHub still redirects). `Client.File` gives a
+  source it left for stalling or crawling one more try on a new
+  connection (some of a CDN's addresses crawl from China, others do not);
+  the last attempt is never left for being slow.
+
 ## v0.5.0 — 2026-10-18
 
 Downloads from GitHub for users in China; nothing else changed.

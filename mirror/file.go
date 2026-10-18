@@ -66,7 +66,9 @@ var (
 // Every source starts at once; the first to deliver Lead bytes (or the
 // whole file) wins and the others stop. When the winner fails, stalls
 // (Stall), falls below MinRate over RateWindow, or serves a file that
-// does not match, the sources left race again from the start. A failure
+// does not match, the sources left race again from the start; a source
+// left for stalling or crawling races once more, on a new connection
+// (the last attempt is never left for being slow). A failure
 // of every source returns their errors joined (errors.Is(err,
 // ErrChecksum) when one served a wrong file).
 func (c *Client) File(ctx context.Context, p string, o FileOptions) (string, string, error) {
@@ -79,6 +81,7 @@ func (c *Client) File(ctx context.Context, p string, o FileOptions) (string, str
 	}
 	pr := &progress{fn: o.Progress, size: o.Size}
 	left := c.sources()
+	retried := map[string]bool{}
 	var errs []error
 	for len(left) > 0 {
 		pr.reset()
@@ -88,7 +91,7 @@ func (c *Client) File(ctx context.Context, p string, o FileOptions) (string, str
 			break
 		}
 		left = slices.DeleteFunc(left, func(b string) bool { return b == r.base })
-		err := c.finish(r, len(left) > 0, o, pr)
+		err := c.finish(r, len(left) > 0 || !retried[r.base], o, pr)
 		if err == nil {
 			if got := hex.EncodeToString(r.h.Sum(nil)); got != want {
 				err = &ChecksumError{URL: r.url, Got: got}
@@ -109,6 +112,13 @@ func (c *Client) File(ctx context.Context, p string, o FileOptions) (string, str
 		}
 		c.logf("mirror: %s: %v", r.url, err)
 		errs = append(errs, fmt.Errorf("%s: %w", r.base, err))
+		if (errors.Is(err, ErrStalled) || errors.Is(err, ErrTooSlow)) && !retried[r.base] {
+			// Once more on a new connection: a CDN's addresses differ
+			// (some Cloudflare ones crawl from China, others do not).
+			retried[r.base] = true
+			left = append(left, r.base)
+			c.client().CloseIdleConnections()
+		}
 	}
 	if ctx.Err() != nil {
 		return "", "", ctx.Err()

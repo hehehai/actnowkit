@@ -22,7 +22,7 @@ package checks either.
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.5.0
+go get github.com/hehehai/actnowkit@v0.5.1
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
@@ -256,7 +256,9 @@ famruntime.Write(fam, famruntime.File{BundleID: bundleID, BudgetBytes: budget, L
 Many users in China get GitHub's release files at a few KB/s.
 `https://mirror.actnow.dev/github` (Cloudflare R2, synced every 30 minutes,
 signatures and checksums checked when syncing) answers GitHub's paths for
-the releases the apps need, so an app only changes the base URL. The
+the releases the apps need, so an app only changes the base URL (its
+`/releases/latest` is JSON `{"tag"}` instead of a redirect; `Latest`
+reads both). The
 mirror is not trusted: the app checks what it gets exactly as before.
 
 ```go
@@ -274,7 +276,8 @@ automatic → github.com and the mirror, `official` → github.com,
 `mirror` → the mirror; `$ACTNOW_GITHUB_SOURCES` replaces them. `File`
 starts every source at once and keeps the first to deliver 256 KB; a
 source that then stalls for 20 s, stays under 32 KB/s for 30 s, fails or
-serves a file whose SHA-256 differs is left and the others race again.
+serves a file whose SHA-256 differs is left and the others race again
+(a stalled or crawling one once more, on a new connection).
 `TextSourceAuto`, `TextSourceOfficial`, `TextSourceMirror` and
 `TextSourceNote` are the setting's reference wordings.
 
