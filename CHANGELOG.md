@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `family`: HereNow joins the table (`herenow`, `dev.hehehai.herenow`,
+  URL scheme `herenow`, https://actnow.dev/herenow, team `TeamActNow`).
+- `shortcuts`: HereNow's default, `openPanel` "Open HereNow" on
+  ⌃⌥⌘H (`Control+Option+Command+H`, press, Carbon, enabled, not
+  exclusive); it collides with no other default.
+
 ## v0.3.0 — 2026-10-17
 
 - New package `listsel`: the row selection of the apps' log views, with no

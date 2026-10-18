@@ -296,6 +296,8 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.auralink.betatest", "auralink", Test, nil},
 		{"dev.hehehai.pik.m7", "pik", Test, nil},
 		{"dev.hehehai.voxtnew.overlaycheck", "voxtnew", Test, nil},
+		{"dev.hehehai.herenow", "herenow", Release, nil},
+		{"dev.hehehai.herenow.dev", "herenow", Dev, nil},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -317,6 +319,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("voxtnew"); a.TeamID != TeamVoxtNew {
 		t.Error("VoxtNew team")
+	}
+	if a, _ := AppByID("herenow"); a.TeamID != TeamActNow || a.URLScheme != "herenow" {
+		t.Error("HereNow row")
 	}
 }
 

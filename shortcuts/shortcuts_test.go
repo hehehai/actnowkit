@@ -93,6 +93,9 @@ func TestDefaultsDisjoint(t *testing.T) {
 	if len(DefaultsOf("voxtnew")) != 4 || DefaultsOf("voxtnew")[0].Keys != "RightOption" {
 		t.Error("VoxtNew defaults")
 	}
+	if d := DefaultsOf("herenow"); len(d) != 1 || d[0].ID != "openPanel" || d[0].Keys != "Control+Option+Command+H" || !d[0].Enabled {
+		t.Error("HereNow defaults")
+	}
 }
 
 func TestFindConflicts(t *testing.T) {
