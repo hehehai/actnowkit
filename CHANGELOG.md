@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.4.0 — 2026-10-18
+
+Two apps join the family; nothing else changed, so code written for v0.3
+builds and behaves as before (`family.Apps` and `shortcuts.Defaults` gain
+rows).
 
 - `family`: HereNow joins the table (`herenow`, `dev.hehehai.herenow`,
   URL scheme `herenow`, https://actnow.dev/herenow, team `TeamActNow`).

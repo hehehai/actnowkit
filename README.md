@@ -18,11 +18,11 @@ package checks either.
   they compile to no-ops, so the logic is tested on Linux.
 - No UI, no dependency on MyGo, no i18n: packages export English and Chinese
   reference strings (`family.Text`) for apps to put in their own catalogues.
-- Status: **v0.3** — `hfhub` is experimental; the other packages follow the
+- Status: **v0.4** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.3.0
+go get github.com/hehehai/actnowkit@v0.4.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
