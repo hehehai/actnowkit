@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.5.0 — 2026-10-18
+
+Downloads from GitHub for users in China; nothing else changed.
+
+- New package `mirror`: files of GitHub releases from github.com or the
+  family's mirror, `https://mirror.actnow.dev/github` (spec §9.6), which
+  answers GitHub's paths. `Sources` maps the family's download source
+  (`network.hfEndpoints`: automatic → both, `official` → github.com,
+  `mirror` → the mirror; `$ACTNOW_GITHUB_SOURCES` replaces them).
+  `Client.File` races the sources for each file (the first to deliver
+  `Lead` bytes wins), leaves a source that stalls, crawls, fails or serves
+  a file with another SHA-256 for the next, and returns `ErrChecksum`
+  (`*ChecksumError`) when only wrong files came. `Client.Latest` reads
+  the latest release's tag from the `/releases/latest` redirect of the
+  first source to answer; `Try` runs a check that needs several files of
+  one source (a checksum file and its signature) at every source and keeps
+  the first that passes; `Bytes` and `Small` fetch small files. Reference
+  wordings `TextSourceAuto`, `TextSourceOfficial`, `TextSourceMirror`,
+  `TextSourceNote`.
+
 ## v0.4.0 — 2026-10-18
 
 Two apps join the family; nothing else changed, so code written for v0.3

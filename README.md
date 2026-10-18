@@ -18,11 +18,11 @@ package checks either.
   they compile to no-ops, so the logic is tested on Linux.
 - No UI, no dependency on MyGo, no i18n: packages export English and Chinese
   reference strings (`family.Text`) for apps to put in their own catalogues.
-- Status: **v0.4** — `hfhub` is experimental; the other packages follow the
+- Status: **v0.5** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.4.0
+go get github.com/hehehai/actnowkit@v0.5.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
@@ -36,6 +36,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`registry`](registry) | Each app's manifest (`apps/<bundle id>.json`: version, path, capabilities, shortcuts, services), and discovery: manifests + LaunchServices + running processes → which family apps are installed and running. |
 | [`models`](models) | The shared model library (`$HUB`, the Hugging Face cache): resolving it, claims ("I use repo@commit", naming every model of the app that uses it), repo and blob locks compatible with huggingface_hub's `.locks/`, the installed check, delete decisions and deletion that keep other apps' models, tombstones, orphan clean-up, disk usage, the family pins table, model licence acceptances. |
 | [`hfhub`](hfhub) | *Experimental.* A Hugging Face downloader on top of `models`: mirrors raced, parallel ranged downloads, resume (including another app's partial files), verification, and the family locks and claims. |
+| [`mirror`](mirror) | Files of GitHub releases (yt-dlp, QuickJS, ffmpeg) from github.com or the family's mirror `https://mirror.actnow.dev/github`: sources raced per file, a stalled, crawling or wrong source left for the next; the caller's checks unchanged. |
 | [`settings`](settings) | `settings.json` (language, proxy, Hugging Face endpoints, model folder), "follow the family" flags, the first-run migration of an app's own values. |
 | [`credentials`](credentials) | Shared API keys: the vendor table, the login-Keychain item `ActNow` / `vendor.<id>` through `/usr/bin/security`, `credentials.json` (hint, fingerprint, users), the consent flow. |
 | [`shortcuts`](shortcuts) | Canonical key combinations, the conflict rule, who shows the conflict prompt, the family's default assignments. |
@@ -249,6 +250,33 @@ famruntime.Write(fam, famruntime.File{BundleID: bundleID, BudgetBytes: budget, L
 ```
 
 (`famruntime` is `github.com/hehehai/actnowkit/runtime` imported under another name.)
+
+### GitHub release downloads
+
+Many users in China get GitHub's release files at a few KB/s.
+`https://mirror.actnow.dev/github` (Cloudflare R2, synced every 30 minutes,
+signatures and checksums checked when syncing) answers GitHub's paths for
+the releases the apps need, so an app only changes the base URL. The
+mirror is not trusted: the app checks what it gets exactly as before.
+
+```go
+c := &mirror.Client{Sources: mirror.Sources(hfEndpoints), HTTP: httpClient}
+tag, _, err := c.Latest(ctx, "yt-dlp/yt-dlp", validTag)          // sources raced
+sums, from, err := mirror.Try(ctx, c, func(ctx context.Context, base string) ([]byte, error) {
+	// a checksum file and its signature, from one source, checked together
+})
+file, from, err := c.File(ctx, "/yt-dlp/yt-dlp/releases/download/"+tag+"/yt-dlp_macos.zip",
+	mirror.FileOptions{Dir: dir, SHA256: sum, Progress: report})
+```
+
+`mirror.Sources` reads the family's download source (`network.hfEndpoints`):
+automatic → github.com and the mirror, `official` → github.com,
+`mirror` → the mirror; `$ACTNOW_GITHUB_SOURCES` replaces them. `File`
+starts every source at once and keeps the first to deliver 256 KB; a
+source that then stalls for 20 s, stays under 32 KB/s for 30 s, fails or
+serves a file whose SHA-256 differs is left and the others race again.
+`TextSourceAuto`, `TextSourceOfficial`, `TextSourceMirror` and
+`TextSourceNote` are the setting's reference wordings.
 
 ### Log selection
 
