@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+Proposed as v0.6.0: one app and one capability join the family; nothing
+else changed, so code written for v0.5 builds and behaves as before
+(`family.Apps` gains a row, `registry` a constant).
+
+- `family`: Paralign joins the table (`paralign`, `dev.hehehai.paralign`,
+  URL scheme `paralign`, https://actnow.dev/paralign, team `TeamActNow`).
+  Its engine (`dev.hehehai.paralign.engine`) is a component, not an app.
+  It has no global shortcut, so `shortcuts.Defaults` is unchanged.
+- `registry`: new capability `CapLearning` (`"learning"`): the app does
+  local language learning from media and opens
+  `<scheme>://import?path=<file>[&subtitles=<file>]` for a video or audio
+  file another app hands over, optionally with the subtitles to study
+  (CaptionCraft's and Dicta's "Study in Paralign").
+
 ## v0.5.1 — 2026-10-18
 
 - `mirror`: the ActNow mirror's files are now served by R2 itself

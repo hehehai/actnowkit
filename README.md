@@ -1,10 +1,10 @@
 # actnowkit
 
 Shared Go packages for the [ActNow](https://actnow.dev) family of macOS apps
-(AudioSmith, Dicta, Auralink, VoxtNew, Pik, HereNow, CaptionCraft). They let
-the apps on one Mac find each other and share what can be shared — the
-Hugging Face model cache, remote-service API keys, general settings — without
-deleting each other's models or fighting over global shortcuts.
+(AudioSmith, Dicta, Auralink, VoxtNew, Pik, HereNow, CaptionCraft, Paralign).
+They let the apps on one Mac find each other and share what can be shared —
+the Hugging Face model cache, remote-service API keys, general settings —
+without deleting each other's models or fighting over global shortcuts.
 
 actnowkit is the reference implementation of the ActNow family protocol: a
 set of JSON files, `flock(2)` locks and Darwin notifications under

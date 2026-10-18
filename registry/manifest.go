@@ -41,6 +41,12 @@ const (
 	// in). Such an app opens <scheme>://import?path=<file> (a video,
 	// audio or subtitle file another app hands over).
 	CapSubtitles = "subtitles"
+	// CapLearning: local language learning from media (a study player
+	// over subtitles, word lookup, a vocabulary with spaced review). Such
+	// an app opens <scheme>://import?path=<file>[&subtitles=<file>] (a
+	// video or audio file another app hands over, with an optional
+	// subtitle file to use instead of transcribing it).
+	CapLearning = "learning"
 )
 
 // Link keys of Manifest.Links.

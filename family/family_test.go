@@ -302,6 +302,10 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.captioncraft.dev", "captioncraft", Dev, nil},
 		{"dev.hehehai.captioncraft.updtest", "captioncraft", Test, nil},
 		{"dev.hehehai.captioncraft.engine", "captioncraft", "", ErrComponent},
+		{"dev.hehehai.paralign", "paralign", Release, nil},
+		{"dev.hehehai.paralign.dev", "paralign", Dev, nil},
+		{"dev.hehehai.paralign.e2e", "paralign", Test, nil},
+		{"dev.hehehai.paralign.engine", "paralign", "", ErrComponent},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -329,6 +333,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("captioncraft"); a.TeamID != TeamActNow || a.URLScheme != "captioncraft" || a.ProductURL != "https://actnow.dev/captioncraft" {
 		t.Error("CaptionCraft row")
+	}
+	if a, _ := AppByID("paralign"); a.Name != "Paralign" || a.TeamID != TeamActNow || a.URLScheme != "paralign" || a.ProductURL != "https://actnow.dev/paralign" {
+		t.Error("Paralign row")
 	}
 }
 

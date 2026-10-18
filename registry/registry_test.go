@@ -101,6 +101,26 @@ func TestWriteReadList(t *testing.T) {
 	}
 }
 
+// TestLearningManifest: Paralign's manifest, as another app (CaptionCraft's
+// "Study in Paralign") finds it by capability.
+func TestLearningManifest(t *testing.T) {
+	d := family.At(t.TempDir())
+	m := manifest("dev.hehehai.paralign", "/Applications/Paralign.app")
+	m.URLScheme = "paralign"
+	m.Capabilities = []string{CapModelsHF, CapASRLocal, CapLLMLocal, CapTTSLocal, CapLearning}
+	if err := Write(d, m); err != nil {
+		t.Fatal(err)
+	}
+	ms, errs := List(d)
+	if len(ms) != 1 || len(errs) != 0 {
+		t.Fatalf("%d manifests, errs %v", len(ms), errs)
+	}
+	got := ms[0]
+	if got.App != "paralign" || got.URLScheme != "paralign" || !got.Has(CapLearning) || got.Has(CapSubtitles) {
+		t.Errorf("%+v", got)
+	}
+}
+
 func TestDiscover(t *testing.T) {
 	d := family.At(t.TempDir())
 	apps := t.TempDir()
