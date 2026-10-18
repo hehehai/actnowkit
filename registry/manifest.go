@@ -37,6 +37,10 @@ const (
 	CapColor     = "color"
 	CapAPILocal  = "api.local"
 	CapAccount   = "account" // actnow.dev sign-in (spec §12)
+	// CapSubtitles: video subtitles (transcribe, translate, style, burn
+	// in). Such an app opens <scheme>://import?path=<file> (a video,
+	// audio or subtitle file another app hands over).
+	CapSubtitles = "subtitles"
 )
 
 // Link keys of Manifest.Links.

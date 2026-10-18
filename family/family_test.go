@@ -298,6 +298,10 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.voxtnew.overlaycheck", "voxtnew", Test, nil},
 		{"dev.hehehai.herenow", "herenow", Release, nil},
 		{"dev.hehehai.herenow.dev", "herenow", Dev, nil},
+		{"dev.hehehai.captioncraft", "captioncraft", Release, nil},
+		{"dev.hehehai.captioncraft.dev", "captioncraft", Dev, nil},
+		{"dev.hehehai.captioncraft.updtest", "captioncraft", Test, nil},
+		{"dev.hehehai.captioncraft.engine", "captioncraft", "", ErrComponent},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -322,6 +326,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("herenow"); a.TeamID != TeamActNow || a.URLScheme != "herenow" {
 		t.Error("HereNow row")
+	}
+	if a, _ := AppByID("captioncraft"); a.TeamID != TeamActNow || a.URLScheme != "captioncraft" || a.ProductURL != "https://actnow.dev/captioncraft" {
+		t.Error("CaptionCraft row")
 	}
 }
 
