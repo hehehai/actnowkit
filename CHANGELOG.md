@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.6.0 — 2026-10-18
 
-Proposed as v0.6.0: one app and one capability join the family; nothing
-else changed, so code written for v0.5 builds and behaves as before
-(`family.Apps` gains a row, `registry` a constant).
+One app and one capability join the family; nothing else changed, so code
+written for v0.5 builds and behaves as before (`family.Apps` gains a row,
+`registry` a constant).
 
 - `family`: Paralign joins the table (`paralign`, `dev.hehehai.paralign`,
   URL scheme `paralign`, https://actnow.dev/paralign, team `TeamActNow`).
