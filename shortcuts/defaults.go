@@ -36,13 +36,15 @@ var Defaults = []Default{
 	{"pik", Shortcut{ID: "toggleColorDock", Title: "Show/Hide Color Dock", Keys: "Control+Option+Command+D", Trigger: Press, Mechanism: Carbon}},
 	{"pik", Shortcut{ID: "getPrimaryColor", Title: "Get Primary Color", Keys: "Control+Option+Command+F", Trigger: Press, Mechanism: Carbon}},
 	{"pik", Shortcut{ID: "getSecondaryColor", Title: "Get Secondary Color", Keys: "Control+Option+Command+B", Trigger: Press, Mechanism: Carbon}},
+	// Pik's own (Sip has none): Pick Area, off.
+	{"pik", Shortcut{ID: "pickArea", Title: "Pick Area", Keys: "Control+Option+Command+A", Trigger: Press, Mechanism: Carbon}},
 
 	// HereNow: opens the menu bar panel.
 	{"herenow", Shortcut{ID: "openPanel", Title: "Open HereNow", Keys: "Control+Option+Command+H", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 
-	// Act: the quick collect panel (its screenshot shortcuts have no
-	// default keys).
-	{"act", Shortcut{ID: "quickCollect", Title: "Quick Collect", Keys: "Control+Option+Command+A", Trigger: Press, Enabled: true, Mechanism: Carbon}},
+	// Act: the quick collect panel, S for "save" (its screenshot
+	// shortcuts have no default keys).
+	{"act", Shortcut{ID: "quickCollect", Title: "Quick Collect", Keys: "Control+Option+Command+S", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 }
 
 // DefaultsOf lists an app's default shortcuts.

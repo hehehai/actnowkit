@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.1 — 2026-10-19
+
+A fix to the default shortcut table; nothing else changed.
+
+- `shortcuts`: Act's Quick Collect moves to `Control+Option+Command+S`
+  ("save"). v0.7.0 gave it ⌃⌥⌘A, which Pik already uses for Pick Area
+  (off by default, and not in the table). Pik's Pick Area now has its
+  row (`pik`/`pickArea`, ⌃⌥⌘A, off), so the disjointness test guards it.
+
 ## v0.7.0 — 2026-10-19
 
 Act joins the family, with the capabilities, model roles and pins it
