@@ -32,6 +32,8 @@ const (
 	RoleAlign   = "align"
 	RoleDiarize = "diarize"
 	RoleEnhance = "enhance"
+	RoleEmbed   = "embed" // embedding models (search by meaning)
+	RoleVLM     = "vlm"   // vision language models used only for images
 	RoleOther   = "other"
 )
 

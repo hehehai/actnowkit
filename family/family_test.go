@@ -306,6 +306,10 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.paralign.dev", "paralign", Dev, nil},
 		{"dev.hehehai.paralign.e2e", "paralign", Test, nil},
 		{"dev.hehehai.paralign.engine", "paralign", "", ErrComponent},
+		{"dev.hehehai.act", "act", Release, nil},
+		{"dev.hehehai.act.dev", "act", Dev, nil},
+		{"dev.hehehai.act.e2e", "act", Test, nil},
+		{"dev.hehehai.act.engine", "act", "", ErrComponent},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -336,6 +340,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("paralign"); a.Name != "Paralign" || a.TeamID != TeamActNow || a.URLScheme != "paralign" || a.ProductURL != "https://actnow.dev/paralign" {
 		t.Error("Paralign row")
+	}
+	if a, _ := AppByID("act"); a.Name != "Act" || a.TeamID != TeamActNow || a.URLScheme != "act" || a.ProductURL != "https://actnow.dev/act" {
+		t.Error("Act row")
 	}
 }
 

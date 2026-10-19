@@ -1,6 +1,6 @@
 {
   "schema": "actnow.models.pins/1",
-  "updated": "2026-10-16",
+  "updated": "2026-10-19",
   "pins": [
     {
       "repo": "mlx-community/Qwen3-ASR-0.6B-4bit",
@@ -9,7 +9,7 @@
       "quant": "4bit",
       "role": "asr",
       "bytes": 712781279,
-      "apps": ["audiosmith", "dicta", "voxtnew"]
+      "apps": ["audiosmith", "dicta", "voxtnew", "act"]
     },
     {
       "repo": "mlx-community/Qwen3-ASR-1.7B-8bit",
@@ -98,7 +98,7 @@
       "quant": "4bit",
       "role": "llm",
       "bytes": 5179239349,
-      "apps": ["dicta"],
+      "apps": ["dicta", "act"],
       "note": "Dicta's default LLM; AudioSmith removed it from its catalogue and must not clean it up while Dicta claims it."
     },
     {
@@ -124,7 +124,7 @@
       "family": "qwen3.5",
       "quant": "4bit",
       "role": "llm",
-      "apps": ["voxtnew"]
+      "apps": ["voxtnew", "act"]
     },
     {
       "repo": "tencent/Hy-MT2-1.8B-GGUF",
@@ -143,6 +143,16 @@
       "role": "asr",
       "bytes": 1269855425,
       "apps": ["audiosmith", "dicta"]
+    },
+    {
+      "repo": "mlx-community/embeddinggemma-2-8bit",
+      "revision": "7505ef2f8ddef45efef6d060865f27989b3c9cec",
+      "family": "embeddinggemma2",
+      "quant": "8bit",
+      "role": "embed",
+      "bytes": 1266419318,
+      "apps": ["act"],
+      "note": "Act's search by meaning; another app adding semantic search can reuse it without a download."
     }
   ]
 }

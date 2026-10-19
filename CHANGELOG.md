@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.7.0 — 2026-10-19
+
+Act joins the family, with the capabilities, model roles and pins it
+uses; nothing else changed, so code written for v0.6 builds and behaves as
+before (new rows and constants only).
+
+- `family`: Act joins the table (`act`, `dev.hehehai.act`, URL scheme
+  `act`, https://actnow.dev/act, team `TeamActNow`). Its engine
+  (`dev.hehehai.act.engine`) is a component, not an app.
+- `shortcuts`: Act's default, Quick Collect on `Control+Option+Command+A`
+  (Carbon, enabled), free in the family table (Pik's picker is ⌃⌥⌘P,
+  HereNow's panel ⌃⌥⌘H, Dicta's reserved meeting key ⌃⌥⌘R). Its
+  screenshot shortcuts have no default keys.
+- `registry`: new capabilities `CapLibrary` (`"library"`: a library that
+  takes files other apps hand over, `<scheme>://import?path=<file>…` and
+  `<scheme>://new?url=<link>`), `CapEmbedLocal` (`"embed.local"`) and
+  `CapVLMLocal` (`"vlm.local"`), the strings Act already declares.
+- `models`: roles `RoleEmbed` (`"embed"`) and `RoleVLM` (`"vlm"`); the
+  pins table gains EmbeddingGemma 2 (`mlx-community/embeddinggemma-2-8bit`
+  at `7505ef2`, role `embed`) and lists Act on the three pins its
+  catalogue shares (Qwen3-ASR 0.6B, Qwen3.5 2B, Gemma 4 E4B), so the
+  other apps do not clean them up while Act may use them.
+
 ## v0.6.0 — 2026-10-18
 
 One app and one capability join the family; nothing else changed, so code

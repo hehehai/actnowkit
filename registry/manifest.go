@@ -47,6 +47,16 @@ const (
 	// video or audio file another app hands over, with an optional
 	// subtitle file to use instead of transcribing it).
 	CapLearning = "learning"
+	// CapLibrary: a library of media and documents that takes files other
+	// apps hand over ("Save to Act"). Such an app opens
+	// <scheme>://import?path=<file>[&path=…][&tags=a,b][&note=…][&source=<url>]
+	// and <scheme>://new?url=<link> (fills its collect window, no download).
+	CapLibrary = "library"
+	// CapEmbedLocal: a local multimodal embedding model (search by meaning
+	// over text, images, audio and video).
+	CapEmbedLocal = "embed.local"
+	// CapVLMLocal: a local vision language model (image understanding).
+	CapVLMLocal = "vlm.local"
 )
 
 // Link keys of Manifest.Links.

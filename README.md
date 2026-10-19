@@ -1,7 +1,8 @@
 # actnowkit
 
 Shared Go packages for the [ActNow](https://actnow.dev) family of macOS apps
-(AudioSmith, Dicta, Auralink, VoxtNew, Pik, HereNow, CaptionCraft, Paralign).
+(AudioSmith, Dicta, Auralink, VoxtNew, Pik, HereNow, CaptionCraft, Paralign,
+Act).
 They let the apps on one Mac find each other and share what can be shared —
 the Hugging Face model cache, remote-service API keys, general settings —
 without deleting each other's models or fighting over global shortcuts.
@@ -22,7 +23,7 @@ package checks either.
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.6.0
+go get github.com/hehehai/actnowkit@v0.7.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
