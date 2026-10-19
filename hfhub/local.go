@@ -51,6 +51,9 @@ func Status(cacheDir string, e Entry) (Local, error) {
 	for _, a := range e.Aux {
 		al := statusOne(cacheDir, auxEntry(e, a), true)
 		l.Bytes += al.Bytes
+		for _, d := range al.Damaged {
+			l.Damaged = append(l.Damaged, a.Repo+":"+d)
+		}
 		if al.State != Downloaded {
 			l.Missing = append(l.Missing, a.Repo+":")
 			if l.State == Downloaded || al.State == Partial {
@@ -81,7 +84,7 @@ func statusOne(cacheDir string, e Entry, aux bool) Local {
 		return l
 	}
 	st := models.Check(cacheDir, claimOf(e, commit, aux))
-	l.Snapshot, l.Missing, l.Bytes = st.Snapshot, st.Missing, st.Bytes
+	l.Snapshot, l.Missing, l.Damaged, l.Bytes = st.Snapshot, st.Missing, st.Damaged, st.Bytes
 	switch st.State {
 	case models.Installed:
 		l.State = Downloaded
@@ -99,6 +102,12 @@ func claimOf(e Entry, commit string, aux bool) models.Claim {
 	c := models.Claim{Repo: e.Repo, Revision: commit, Model: e.ID, Family: e.Family, Role: e.Role, Aux: aux}
 	for _, f := range e.Files {
 		c.Files = append(c.Files, f.Path)
+		if f.Size > 0 && !strings.ContainsAny(f.Path, "*?[") {
+			if c.Sizes == nil {
+				c.Sizes = map[string]int64{}
+			}
+			c.Sizes[f.Path] = f.Size
+		}
 	}
 	return c
 }

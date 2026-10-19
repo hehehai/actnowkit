@@ -139,6 +139,7 @@ var Scenarios = []Scenario{
 	{Name: "ReuseWithoutDownload", Spec: "§16.1 scenario 1, §7.10.1", Run: reuse},
 	{Name: "DeleteKeepsSharedModel", Spec: "§16.1 scenario 2, §7.6", Run: deleteShared},
 	{Name: "DeleteUnsharedModel", Spec: "§7.6 step 1.5", Run: deleteUnshared},
+	{Name: "DeleteWithLostClaims", Spec: "§7.6 (v1.0.9: lost claims are unsure)", Run: deleteLostClaims},
 	{Name: "DeleteForAllApps", Spec: "§7.6 step 1.6", Run: deleteForAll},
 	{Name: "SharedRepoWithinApp", Spec: "§7.3 models, §7.6", Run: sharedWithinApp},
 	{Name: "DeleteWhileDownloading", Spec: "§7.4", Run: deleteBusy},
@@ -217,6 +218,25 @@ func deleteShared(t testing.TB, fx *Fixture, newApp Factory) {
 	res, err := peer.Delete(ctx, repoASR.Ref, models.ThisApp)
 	if err != nil || !res.Deleted {
 		t.Fatalf("the peer could not delete the model after the app released it: %+v %v", res, err)
+	}
+}
+
+// deleteLostClaims: the peer's claims file is gone (a cleaner deleted the
+// family folder's models/claims) while its manifest says it keeps models
+// in this $HUB: the app must not take that as "nobody uses it".
+func deleteLostClaims(t testing.TB, fx *Fixture, newApp Factory) {
+	app := as[ModelApp](t, newApp(t, fx, AppUnderTest))
+	ctx := timeout(t)
+	fx.Register(PeerSmith)
+	fx.Install(repoASR)
+	must(t, fx.Peer(PeerSmith).Claim(ctx, models.Claim{Repo: repoASR.Ref.Repo, Revision: repoASR.Ref.Revision}))
+	must(t, app.Reuse(ctx, repoASR.Ref))
+	must(t, os.Remove(fx.Family.ClaimsFile(PeerSmith)))
+	if err := app.Remove(ctx, repoASR.Ref, false); err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if !fx.Installed(repoASR.Ref) {
+		t.Fatal("the app deleted a model while another app's claims were missing (lost claims must count as unsure)")
 	}
 }
 

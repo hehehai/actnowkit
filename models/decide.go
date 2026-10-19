@@ -41,8 +41,14 @@ type Decision struct {
 	Orphans []User
 	// LoadedBy are the other running apps that hold it in memory.
 	LoadedBy []User
-	// Unsure: some claims files could not be read, so anyone may use it.
+	// Unsure: some claims files could not be read, or an installed app
+	// that keeps models in this $HUB has no claims file (Unclaimed), so
+	// anyone may use it.
 	Unsure bool
+	// Unclaimed are the installed apps whose manifest names this $HUB but
+	// whose claims file is missing (lost with the family folder): they
+	// will claim their models again when they start (Store.Heal).
+	Unclaimed []User
 	// FreeBytes is what deleting the snapshot frees: its blobs that no
 	// other snapshot of the repo links.
 	FreeBytes int64
@@ -55,11 +61,11 @@ type Decision struct {
 // app" then keeps them (spec §7.6 step 1.4).
 func (d Decision) InUse() bool { return len(d.Users) > 0 || len(d.LoadedBy) > 0 || d.Unsure }
 
-// UserNames are the names of Users and LoadedBy, each once, for the
+// UserNames are the names of Users, LoadedBy and Unclaimed, each once, for the
 // dialogs ("AudioSmith also uses this model").
 func (d Decision) UserNames() []string {
 	var out []string
-	for _, u := range append(slices.Clone(d.Users), d.LoadedBy...) {
+	for _, u := range append(append(slices.Clone(d.Users), d.LoadedBy...), d.Unclaimed...) {
 		if !slices.Contains(out, u.Name) {
 			out = append(out, u.Name)
 		}
@@ -129,8 +135,16 @@ func (s *Store) Decide(ref Ref) (Decision, error) {
 			d.Orphans = append(d.Orphans, u)
 		}
 	}
+	for bid, st := range apps {
+		if _, ok := all[bid]; ok || bid == s.BundleID || !st.Installed || st.ModelsRoot == "" || !SameHub(st.ModelsRoot, s.Hub) {
+			continue
+		}
+		d.Unclaimed = append(d.Unclaimed, userOf(bid, apps))
+		d.Unsure = true
+	}
 	sortUsers(d.Users)
 	sortUsers(d.Orphans)
+	sortUsers(d.Unclaimed)
 	for _, f := range famruntime.LoadedBy(s.Family, s.BundleID, ref.Repo, ref.Revision) {
 		d.LoadedBy = append(d.LoadedBy, userOf(f.BundleID, apps))
 	}
@@ -305,6 +319,9 @@ func freeable(hub string, ref Ref) (int64, bool) {
 	used, others := usedBlobNames(repoDir, ref.Revision)
 	var n int64
 	for p, size := range snapshotBlobs(SnapshotDir(hub, ref)) {
+		if fi, err := os.Stat(p); err == nil && linkedElsewhere(fi) {
+			continue // an imported blob the Hugging Face cache still holds
+		}
 		if !used[filepath.Base(p)] {
 			n += size
 		}
@@ -375,12 +392,15 @@ func DeleteSnapshot(hub string, ref Ref) (int64, error) {
 	return freed, nil
 }
 
+// removeSize removes p and returns the space that frees: nothing for a
+// file with other hard links (an imported blob the Hugging Face cache
+// still holds).
 func removeSize(p string) int64 {
 	fi, err := os.Lstat(p)
 	if err != nil {
 		return 0
 	}
-	if os.Remove(p) != nil {
+	if os.Remove(p) != nil || linkedElsewhere(fi) {
 		return 0
 	}
 	return fi.Size()

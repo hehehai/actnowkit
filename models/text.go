@@ -74,4 +74,34 @@ var (
 	}
 	TextMoveButton   = family.Text{EN: "Move models…", ZH: "移动模型…"}
 	TextKeepSeparate = family.Text{EN: "Keep separate", ZH: "保持分开"}
+
+	// v1.0.9: the library in $FAMILY/models/hub, Time Machine, size check.
+
+	// TextBackupModels / TextBackupModelsHint: the storage page's switch
+	// for models.backup (§7.12), off by default.
+	TextBackupModels     = family.Text{EN: "Back up models with Time Machine", ZH: "用 Time Machine 备份模型"}
+	TextBackupModelsHint = family.Text{
+		EN: "Models can be downloaded again, so they are left out of backups. Applies to all ActNow apps.",
+		ZH: "模型可以重新下载，所以默认不放进备份。对所有 ActNow app 生效。",
+	}
+	// TextImported: once, after Import found models (§7.1.1).
+	TextImported = family.Text{
+		EN: "Found {count} models downloaded earlier ({size}). They are now in the ActNow model folder; nothing was downloaded again.",
+		ZH: "找到之前下载的 {count} 个模型（{size}），已放进 ActNow 模型文件夹，无需重新下载。",
+	}
+	// TextFolderSource: the model folder row's second line (§7.10.2):
+	// where the path comes from.
+	TextFolderDefault = family.Text{EN: "Default · Shared by all ActNow apps", ZH: "默认位置 · 由所有 ActNow app 共用"}
+	TextFolderChosen  = family.Text{EN: "Chosen in {app} · Shared by all ActNow apps", ZH: "在 {app} 中设置 · 由所有 ActNow app 共用"}
+	// TextDamaged: Check found files of the wrong size (§7.5).
+	TextDamaged = family.Text{
+		EN: "Some files are incomplete. Download again to repair (only the damaged files are fetched).",
+		ZH: "部分文件不完整。重新下载即可修复（只下载损坏的文件）。",
+	}
+	// TextUnclaimed: Decide is unsure because an app's claims are missing
+	// (§7.6, v1.0.9); the files stay.
+	TextUnclaimed = family.Text{
+		EN: "{apps} may still use this model, so its files stay. Open {apps} once and try again.",
+		ZH: "{apps} 可能还在使用这个模型，文件已保留。打开一次 {apps} 后再试。",
+	}
 )

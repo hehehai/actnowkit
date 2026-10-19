@@ -82,3 +82,29 @@ func TestWaitPasting(t *testing.T) {
 		t.Error("paste ended")
 	}
 }
+
+// C10: a reused pid or a file from before the boot is not a live app.
+func TestLiveStale(t *testing.T) {
+	self, _ := os.Executable()
+	now := time.Now()
+	if !Live(File{PID: os.Getpid(), Exe: self, Updated: now}) {
+		t.Fatal("self not live")
+	}
+	if !Live(File{PID: os.Getpid(), Updated: now}) {
+		t.Fatal("older writer (no exe) not live")
+	}
+	if Live(File{PID: os.Getpid(), Exe: "/Applications/Other.app/Contents/MacOS/other", Updated: now}) {
+		t.Fatal("reused pid taken as live")
+	}
+	if bt := bootTime(); !bt.IsZero() && Live(File{PID: os.Getpid(), Updated: bt.Add(-time.Hour)}) {
+		t.Fatal("file from before the boot taken as live")
+	}
+	d := family.At(t.TempDir())
+	if err := Write(d, File{BundleID: "dev.hehehai.dicta"}); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := Read(d, "dev.hehehai.dicta")
+	if f.Exe != self {
+		t.Fatalf("exe %q", f.Exe)
+	}
+}

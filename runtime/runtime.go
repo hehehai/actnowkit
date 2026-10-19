@@ -15,6 +15,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -48,9 +49,14 @@ func (l Loaded) MarshalJSON() ([]byte, error) {
 // File is runtime/<bundle id>.json. Only its app writes it; it is
 // removed when the app quits, and ignored when its process is gone.
 type File struct {
-	Schema      string    `json:"schema"`
-	BundleID    string    `json:"bundleId"`
-	PID         int       `json:"pid"`
+	Schema   string `json:"schema"`
+	BundleID string `json:"bundleId"`
+	PID      int    `json:"pid"`
+	// Exe is the writer's executable (v0.8.0): a reader takes the file
+	// for a live app only when the process with PID runs this executable,
+	// so a reused pid does not keep a crashed app's models counted
+	// (spec §6.3, §11.1). Absent in files of older writers.
+	Exe         string    `json:"exe,omitempty"`
 	Updated     time.Time `json:"updated"`
 	BudgetBytes int64     `json:"budgetBytes"`
 	Loaded      []Loaded  `json:"loaded"`
@@ -89,6 +95,9 @@ func Write(d family.Dir, f File) error {
 	f.Schema = family.SchemaOf(Kind, 1)
 	if f.PID == 0 {
 		f.PID = os.Getpid()
+		if f.Exe == "" {
+			f.Exe, _ = os.Executable()
+		}
 	}
 	f.Updated = family.Now()
 	if f.Loaded == nil {
@@ -122,7 +131,10 @@ func Read(d family.Dir, bundleID string) (File, error) {
 }
 
 // ReadAll reads the runtime files of processes that still exist. Files of
-// gone processes (a crash) are skipped, not deleted.
+// gone processes (a crash) are skipped, not deleted. A file is gone when
+// its pid does not run, when it was written before the system started,
+// or when its pid now runs another executable than the file's exe (a
+// reused pid).
 func ReadAll(d family.Dir) ([]File, []error) {
 	entries, err := os.ReadDir(d.RuntimeDir())
 	if err != nil {
@@ -143,12 +155,38 @@ func ReadAll(d family.Dir) ([]File, []error) {
 			errs = append(errs, err)
 			continue
 		}
-		if !family.ProcessAlive(f.PID) {
+		if !Live(f) {
 			continue
 		}
 		out = append(out, f)
 	}
 	return out, errs
+}
+
+// Live reports whether a runtime file belongs to a running process (see
+// ReadAll).
+func Live(f File) bool {
+	if !family.ProcessAlive(f.PID) {
+		return false
+	}
+	if bt := bootTime(); !bt.IsZero() && !f.Updated.IsZero() && f.Updated.Before(bt.Add(-time.Minute)) {
+		return false
+	}
+	if f.Exe != "" {
+		if exe := procExe(f.PID); exe != "" && !sameExe(exe, f.Exe) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameExe(a, b string) bool {
+	if a == b {
+		return true
+	}
+	ra, err1 := filepath.EvalSymlinks(a)
+	rb, err2 := filepath.EvalSymlinks(b)
+	return err1 == nil && err2 == nil && ra == rb
 }
 
 // Others is ReadAll without self (a bundle id).

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hehehai/actnowkit/family"
 	"github.com/hehehai/actnowkit/models"
+	"github.com/hehehai/actnowkit/settings"
 )
 
 // Errors of the Client. Code maps them to stable codes.
@@ -177,4 +178,14 @@ func (c *Client) token() string {
 		return ""
 	}
 	return strings.TrimSpace(c.opts.Token())
+}
+
+// backup is the family's models.backup (spec §7.12): false, the default,
+// keeps finished repos out of Time Machine.
+func (c *Client) backup() bool {
+	if c.opts.Store == nil {
+		return false
+	}
+	s, _, _ := settings.Read(c.opts.Store.Family)
+	return settings.ModelsBackup(s)
 }

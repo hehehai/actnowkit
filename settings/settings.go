@@ -32,7 +32,24 @@ const (
 	KeyProxy       = "network.proxy"       // "" automatic, "direct", or a proxy URL
 	KeyHFEndpoints = "network.hfEndpoints" // "auto", "official", "mirror" or URLs
 	KeyModelsRoot  = "models.root"         // absolute path; "" = the default rules (spec §7.1)
+	// KeyModelsBackup: whether Time Machine backs up the model library
+	// ("on"; unset or "off" = excluded, spec §7.12). It is a property of
+	// the shared folder, so it has no follow flag: every app applies the
+	// family's value (models.ApplyBackup).
+	KeyModelsBackup = "models.backup"
 )
+
+// Values of models.backup.
+const (
+	BackupOn  = "on"
+	BackupOff = "off"
+)
+
+// ModelsBackup reports whether models.backup is on (default off).
+func ModelsBackup(s Settings) bool {
+	v, _ := s.Get(KeyModelsBackup)
+	return v == BackupOn
+}
 
 // Keys lists the phase-1 keys.
 var Keys = []string{KeyLanguage, KeyProxy, KeyHFEndpoints, KeyModelsRoot}
@@ -83,8 +100,9 @@ func (n Network) MarshalJSON() ([]byte, error) {
 
 // Models is the "models" object.
 type Models struct {
-	Root  *string      `json:"root,omitempty"`
-	Extra family.Extra `json:"-"`
+	Root   *string      `json:"root,omitempty"`
+	Backup *string      `json:"backup,omitempty"`
+	Extra  family.Extra `json:"-"`
 }
 
 func (m *Models) UnmarshalJSON(b []byte) error {
@@ -144,12 +162,15 @@ func (s *Settings) field(key string, create bool) (**string, error) {
 			return &s.Network.Proxy, nil
 		}
 		return &s.Network.HFEndpoints, nil
-	case KeyModelsRoot:
+	case KeyModelsRoot, KeyModelsBackup:
 		if s.Models == nil {
 			if !create {
 				return nil, nil
 			}
 			s.Models = &Models{}
+		}
+		if key == KeyModelsBackup {
+			return &s.Models.Backup, nil
 		}
 		return &s.Models.Root, nil
 	}
@@ -233,6 +254,14 @@ func Normalize(key, value string) (string, error) {
 			return "", fmt.Errorf("model folder %q: not an absolute path", value)
 		}
 		return filepath.Clean(value), nil
+	case KeyModelsBackup:
+		switch strings.ToLower(value) {
+		case "", BackupOff, "false", "no", "0":
+			return BackupOff, nil
+		case BackupOn, "true", "yes", "1":
+			return BackupOn, nil
+		}
+		return "", fmt.Errorf("models.backup %q: want \"on\" or \"off\"", value)
 	default:
 		return "", fmt.Errorf("%q: %w", key, ErrUnknownKey)
 	}
@@ -327,7 +356,7 @@ func Set(ctx context.Context, d family.Dir, bundleID, key, value string) (Settin
 
 // Effective is a setting's value for an app (spec §9.3):
 // follow ? (family's value if set, else appDefault) : own.
-// Environment variables (HF_ENDPOINT, HF_HUB_CACHE…) still override the
+// Environment variables (HF_ENDPOINT) still override the
 // result where the app reads them, as before.
 func Effective(fam Settings, key string, follow bool, own, appDefault string) string {
 	if !follow {

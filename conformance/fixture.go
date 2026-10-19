@@ -5,8 +5,8 @@
 //   - testdata/files and testdata/cases.json: a file of every kind, with
 //     the result a conforming reader must reach (read, read-only, corrupt,
 //     members to keep). Language-neutral: any implementation can load them.
-//   - Fixture: a temporary $FAMILY and $HUB (ACTNOW_FAMILY_DIR and
-//     HF_HUB_CACHE set for the test), snapshots in the Hugging Face
+//   - Fixture: a temporary $FAMILY and $HUB ($FAMILY/models/hub;
+//     ACTNOW_FAMILY_DIR set for the test), snapshots in the Hugging Face
 //     layout, and peers — other family apps played by actnowkit itself.
 //   - FakeHub: a local Hugging Face endpoint that counts the bytes it
 //     serves and can pause a file mid-way.
@@ -46,27 +46,35 @@ type Fixture struct {
 	T      testing.TB
 	Family family.Dir
 	Hub    string
+	// Legacy is a Hugging Face cache beside it ($HF_HUB_CACHE for the
+	// test), where a model library moved from (spec v1.0.9) would be.
+	Legacy string
 	// Apps is what the peers' discovery says (bundle id → state): peers
 	// built by the fixture use it, so a test can mark an app uninstalled.
 	Apps map[string]models.AppState
 }
 
-// New makes a fixture under t.TempDir() and points ACTNOW_FAMILY_DIR and
-// HF_HUB_CACHE at it for the test (so code that resolves the defaults
-// lands there too). HF_HOME is cleared.
+// New makes a fixture under t.TempDir() and points ACTNOW_FAMILY_DIR at
+// it for the test, so code that resolves the defaults lands there too:
+// the model library is the family's default, $FAMILY/models/hub (spec
+// v1.0.9). HF_HUB_CACHE points at Legacy, HF_HOME is cleared.
 func New(t testing.TB) *Fixture {
 	t.Helper()
 	root := t.TempDir()
-	fx := &Fixture{T: t, Family: family.At(filepath.Join(root, "ActNow")), Hub: filepath.Join(root, "huggingface", "hub"), Apps: map[string]models.AppState{}}
+	fam := family.At(filepath.Join(root, "ActNow"))
+	fx := &Fixture{T: t, Family: fam, Hub: models.DefaultHubIn(fam), Legacy: filepath.Join(root, "huggingface", "hub"), Apps: map[string]models.AppState{}}
 	if s, ok := t.(interface{ Setenv(string, string) }); ok {
 		s.Setenv(family.EnvDir, fx.Family.Root)
-		s.Setenv("HF_HUB_CACHE", fx.Hub)
+		s.Setenv("HF_HUB_CACHE", fx.Legacy)
 		s.Setenv("HF_HOME", "")
 	}
-	if err := os.MkdirAll(fx.Hub, 0o755); err != nil {
+	if err := os.MkdirAll(fx.Legacy, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fx.Family.Ensure("dev.actnow.conformance"); err != nil {
+		t.Fatal(err)
+	}
+	if err := models.EnsureHub(fx.Family, fx.Hub); err != nil {
 		t.Fatal(err)
 	}
 	return fx

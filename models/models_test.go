@@ -76,19 +76,23 @@ func (e *env) store(bid string) *Store {
 }
 
 func TestResolveHub(t *testing.T) {
+	fam := t.TempDir()
+	t.Setenv("ACTNOW_FAMILY_DIR", fam)
 	t.Setenv("HF_HUB_CACHE", "")
 	t.Setenv("HF_HOME", "")
-	home, _ := os.UserHomeDir()
-	if h, src := ResolveHub(true, "", ""); h != filepath.Join(home, ".cache", "huggingface", "hub") || src != FromDefault {
+	want := filepath.Join(fam, "models", "hub")
+	if h, src := ResolveHub(true, "", ""); h != want || src != FromDefault {
 		t.Errorf("%s %s", h, src)
 	}
+	// The environment no longer chooses $HUB (spec v1.0.9): it names
+	// import sources.
 	t.Setenv("HF_HOME", "/data/hf")
-	if h, src := ResolveHub(true, "", "/own"); h != "/data/hf/hub" || src != FromEnvHome {
+	t.Setenv("HF_HUB_CACHE", "/cache")
+	if h, src := ResolveHub(true, "", "/own"); h != want || src != FromDefault {
 		t.Errorf("%s %s", h, src)
 	}
-	t.Setenv("HF_HUB_CACHE", "/cache")
-	if h, src := ResolveHub(true, "", ""); h != "/cache" || src != FromEnvHub {
-		t.Errorf("%s %s", h, src)
+	if h, src := EnvHub(); h != "/cache" || src != FromEnvHub {
+		t.Errorf("EnvHub %s %s", h, src)
 	}
 	if h, src := ResolveHub(false, "/fam", "/own/"); h != "/own" || src != FromApp {
 		t.Errorf("%s %s", h, src)

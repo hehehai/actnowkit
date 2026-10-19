@@ -12,6 +12,7 @@ import (
 	"github.com/hehehai/actnowkit/family"
 	"github.com/hehehai/actnowkit/hfhub"
 	"github.com/hehehai/actnowkit/models"
+	"github.com/hehehai/actnowkit/redact"
 	"github.com/hehehai/actnowkit/registry"
 	famruntime "github.com/hehehai/actnowkit/runtime"
 	"github.com/hehehai/actnowkit/settings"
@@ -64,6 +65,11 @@ func readmeExamples(ctx context.Context) {
 		Apps: func() map[string]models.AppState { return registry.States(found) },
 	}
 	store.ApplyTombstones()
+	backup := settings.ModelsBackup(famSettings)
+	store.Import(ctx, models.LegacyHubs(hub), backup, wanted...)
+	store.Heal(ctx, wanted...)
+	models.ApplyBackup(fam, hub, backup)
+	_ = redact.Text("x")
 	w, _ := fam.Watch(family.TopicApps, family.TopicSettings, family.TopicModels, family.TopicMemory)
 	go func() {
 		for topic := range w.C {

@@ -23,6 +23,10 @@ type Status struct {
 	Snapshot string   // snapshots/<commit>, when it exists
 	Bytes    int64    // bytes of the blobs the snapshot links (each counted once)
 	Missing  []string // files listed but absent, or links without a blob
+	// Damaged are files whose size is not the size their blob was
+	// verified with (a truncated weights file): the model is Partial,
+	// and a download or Verify repairs it (spec §7.5).
+	Damaged []string
 	// Incomplete bytes of unfinished downloads of the repo (blobs/*.incomplete).
 	Incomplete int64
 }
@@ -33,9 +37,10 @@ var weightExts = []string{".safetensors", ".bin", ".npz", ".gguf", ".onnx", ".pt
 
 // Check says whether c's snapshot is installed, from the files alone (no
 // hashing, no network; spec §7.5): the snapshot directory exists, every
-// link reaches its blob, every file c.Files lists is there, and a main
-// repo has a weights file. Hashes are checked when downloading and when
-// the user asks (hfhub Verify).
+// link reaches its blob, every file c.Files lists is there, each file has
+// the size recorded for its blob (SizesFile) and the size c.Sizes gives,
+// and a main repo has a weights file. Hashes are checked when downloading
+// and when the user asks (hfhub Verify).
 func Check(hub string, c Claim) Status {
 	ref := c.Ref()
 	var st Status
@@ -66,6 +71,7 @@ func Check(hub string, c Claim) Status {
 		return st
 	}
 	st.Snapshot = snap
+	recorded := ReadBlobSizes(hub, ref.Repo)
 	present := map[string]bool{}
 	seen := map[string]bool{}
 	weights := false
@@ -83,6 +89,13 @@ func Check(hub string, c Claim) Status {
 		}
 		files++
 		present[rel] = true
+		if want, ok := c.Sizes[rel]; ok && want > 0 && fi.Size() != want {
+			st.Damaged = append(st.Damaged, rel)
+		} else if t, err := os.Readlink(p); err == nil && recorded != nil {
+			if want, ok := recorded[filepath.Base(t)]; ok && fi.Size() != want {
+				st.Damaged = append(st.Damaged, rel)
+			}
+		}
 		key := p
 		if target, err := filepath.EvalSymlinks(p); err == nil {
 			key = target
@@ -108,7 +121,7 @@ func Check(hub string, c Claim) Status {
 		}
 	}
 	switch {
-	case len(st.Missing) > 0 || files == 0:
+	case len(st.Missing) > 0 || len(st.Damaged) > 0 || files == 0:
 		st.State = Partial
 	case !c.Aux && len(c.Files) == 0 && !weights:
 		st.State = Partial

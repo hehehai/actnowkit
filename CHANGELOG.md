@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.8.0 — 2026-10-19
+
+The family audit's first batch (spec v1.0.9). **The model library moves**:
+apps that update must call `Store.Import` before showing model states.
+
+- `models`: **the default `$HUB` is `$FAMILY/models/hub`**
+  (`~/Library/Application Support/ActNow/models/hub`, `DefaultHub`,
+  `DefaultHubIn`), still in the Hugging Face layout. `ResolveHub` no longer
+  reads `HF_HUB_CACHE` / `HF_HOME`: an app started from Finder and one
+  started from a shell chose different folders. The Hugging Face caches are
+  now import sources (`LegacyHubs`; `EnvHub` keeps its meaning,
+  `HFDefaultHub` is `~/.cache/huggingface/hub`, `FromHFDefault` its source).
+- `models`: `Store.Import(ctx, from, backup, want...)` brings an app's
+  catalogue models (and the claims of its previous library) over from those
+  caches: hard links on the same volume, a copy across volumes when it
+  leaves `ImportReserve` free; holding the destination repo's lock
+  exclusively and the source's shared; refs naming the commit copied;
+  the app's previous claims claimed again (`OriginImported`; the
+  catalogue models are left to the app's own migration or reuse card).
+  Nothing in the source is changed, models no
+  family app wants are not touched. Each app records what it handled in
+  `$FAMILY/models/imported/<bundle id>.json`, so a model deleted after the
+  import does not come back. Deleting a hard-linked blob reports nothing
+  freed (`Decision.FreeBytes`, `Result.Freed`): the cache still holds it.
+- `models`: Time Machine. `SetBackupExcluded` / `IsBackupExcluded` set the
+  sticky attribute `com.apple.metadata:com_apple_backup_excludeItem` (the
+  bytes `tmutil addexclusion` writes; pure Go through purego).
+  `ApplyBackup(fam, hub, backup)` marks the whole default library, and in a
+  folder the user chose only the repos family apps claim; `MarkRepoBackup`
+  for one repo. hfhub marks the repos it finishes. `EnsureHub` creates the
+  library with `$FAMILY`'s 0700 parents.
+- `settings`: `models.backup` (`KeyModelsBackup`, `"on"`/`"off"`, default
+  off = excluded; `ModelsBackup(s)`), family-wide without a follow flag.
+- `models`: the "installed" check compares sizes. Downloaders record each
+  blob's verified size in `models--<owner>--<name>/.actnow/blobs.json`
+  (`RecordBlobSizes`, `ReadBlobSizes`; hfhub and `Import` do), and
+  `Claim.Sizes` carries catalogue sizes (hfhub fills it from `Entry.Files`):
+  a file of another size is listed in `Status.Damaged` / `Local.Damaged`
+  and the model is `Partial`. A download repairs it.
+- `models`: lost claims are "unsure". `AppState.ModelsRoot` (from the
+  manifest, `registry.States`) names the `$HUB` an app keeps models in; an
+  installed app with this `$HUB` and no claims file makes `Decide` unsure
+  (`Decision.Unclaimed`), so nothing it may use is deleted.
+  `Store.Heal(ctx, installed...)` recreates the app's claims file when it is
+  missing (claiming the installed models, or writing it empty): call it at
+  launch and on activation.
+- `redact` (new): `URL`, `Text`, `Error` take API keys and tokens out of URL
+  queries (`key=`, `token=`, `X-Amz-Signature=`…), `user:pass@` out of proxy
+  URLs, `Authorization` headers, bearer tokens and well-known key shapes
+  (`AIza…`, `sk-…`, `hf_…`, `ghp_…`) out of logs, error details and
+  diagnostics.
+- `runtime`: files carry the writer's executable (`File.Exe`); `Live` (and
+  so `ReadAll`, `Others`, `LoadedBy`) ignores a file whose pid now runs
+  another executable, or that was written before the system started, so a
+  crashed app's models stop counting when its pid is reused.
+- `models` texts: `TextBackupModels`, `TextBackupModelsHint`, `TextImported`,
+  `TextFolderDefault`, `TextFolderChosen`, `TextDamaged`, `TextUnclaimed`.
+- `conformance`: the fixture's `$HUB` is `$FAMILY/models/hub`
+  (`Fixture.Legacy` is a Hugging Face cache beside it, `$HF_HUB_CACHE`);
+  registered peers write their claims file; new scenario
+  `DeleteWithLostClaims`. `Check` skips the library inside `$FAMILY`.
+- `hfhub`: `CacheDir` is `models.DefaultHub`; a waiter whose blob holder
+  left no owner file tries the lock again before reporting "unknown" (a
+  flaky test on macOS).
+
 ## v0.7.2 — 2026-10-19
 
 A pins table update; nothing else changed.

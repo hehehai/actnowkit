@@ -53,11 +53,14 @@ type Claim struct {
 	Bytes  int64    `json:"bytes,omitempty"`
 	// Files lists the files used when only part of the repo is (globs
 	// allowed: "v3/*"); nil = the whole snapshot.
-	Files  []string     `json:"files"`
-	Aux    bool         `json:"aux"`
-	Since  time.Time    `json:"since"`
-	Origin string       `json:"origin,omitempty"`
-	Extra  family.Extra `json:"-"`
+	Files  []string  `json:"files"`
+	Aux    bool      `json:"aux"`
+	Since  time.Time `json:"since"`
+	Origin string    `json:"origin,omitempty"`
+	// Sizes are the expected sizes of files (path → bytes), from the
+	// app's catalogue, for Check; not written to the claims file.
+	Sizes map[string]int64 `json:"-"`
+	Extra family.Extra     `json:"-"`
 }
 
 func (c *Claim) UnmarshalJSON(b []byte) error {
@@ -203,6 +206,11 @@ type AppState struct {
 	Name      string
 	Installed bool
 	Running   bool
+	// ModelsRoot is the $HUB the app's manifest names (manifest
+	// models.root): the app keeps models there. An installed app with a
+	// ModelsRoot equal to this app's $HUB but no claims file makes
+	// deletions unsure (spec §7.6, v1.0.9: the claims may have been lost).
+	ModelsRoot string
 }
 
 // Store is one app's view of the model library: its claims, and the
@@ -426,6 +434,36 @@ func (s *Store) Rehome() error {
 		f.Claims = keep
 		return true
 	})
+}
+
+// Heal recreates this app's claims file when it is missing (spec §7.6,
+// v1.0.9): the family folder or its models/claims were deleted (a cleaner,
+// a migration script, the user) and with them the protection of this
+// app's models. installed are the app's catalogue models that are on
+// disk; each that is installed is claimed again (OriginMigrated), and an
+// empty file is written when none is, so that the others see this app
+// keeps no models rather than "claims lost". Call it at launch and when
+// the app becomes active; with the file present it only stats it. It
+// reports whether it wrote the file.
+func (s *Store) Heal(ctx context.Context, installed ...Claim) (bool, error) {
+	if _, err := os.Stat(s.Family.ClaimsFile(s.BundleID)); err == nil || !os.IsNotExist(err) {
+		return false, nil
+	}
+	var errs []error
+	for _, c := range installed {
+		if c.Origin == "" {
+			c.Origin = OriginMigrated
+		}
+		if err := s.Claim(ctx, c); err != nil && !errors.Is(err, ErrNotInstalled) {
+			errs = append(errs, err)
+		}
+	}
+	if _, err := os.Stat(s.Family.ClaimsFile(s.BundleID)); os.IsNotExist(err) {
+		if err := s.update(func(*Claims) bool { return true }); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return true, errors.Join(errs...)
 }
 
 // Remove deletes this app's claims file (e.g. the app wipes its data

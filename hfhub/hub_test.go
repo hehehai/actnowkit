@@ -12,14 +12,13 @@ import (
 )
 
 func TestCacheDir(t *testing.T) {
-	t.Setenv("HF_HUB_CACHE", "")
+	fam := t.TempDir()
+	t.Setenv("ACTNOW_FAMILY_DIR", fam)
 	t.Setenv("HF_HOME", "/data/hf")
-	if got := CacheDir(); got != filepath.Join("/data/hf", "hub") {
-		t.Errorf("HF_HOME: %q", got)
-	}
 	t.Setenv("HF_HUB_CACHE", "/cache")
-	if got := CacheDir(); got != "/cache" {
-		t.Errorf("HF_HUB_CACHE: %q", got)
+	// Since v0.8.0 the environment does not choose the library.
+	if got := CacheDir(); got != filepath.Join(fam, "models", "hub") {
+		t.Errorf("CacheDir %q", got)
 	}
 	if got := RepoDir("/cache", "mlx-community/Kokoro-82M-bf16"); got != "/cache/models--mlx-community--Kokoro-82M-bf16" {
 		t.Errorf("RepoDir %q", got)
@@ -28,11 +27,11 @@ func TestCacheDir(t *testing.T) {
 
 func TestOptionsDefaults(t *testing.T) {
 	t.Setenv("HF_ENDPOINT", "")
-	t.Setenv("HF_HUB_CACHE", t.TempDir())
+	t.Setenv("ACTNOW_FAMILY_DIR", t.TempDir())
 	c := New(Options{})
 	o := c.Options()
 	if o.UserAgent != "actnowkit-hfhub" || o.Official != "https://huggingface.co" || len(o.Endpoints) != 2 ||
-		o.Parallel != 4 || o.ChunkSize != 16<<20 || o.ReserveBytes != 2e9 || o.CacheDir != os.Getenv("HF_HUB_CACHE") {
+		o.Parallel != 4 || o.ChunkSize != 16<<20 || o.ReserveBytes != 2e9 || o.CacheDir != filepath.Join(os.Getenv("ACTNOW_FAMILY_DIR"), "models", "hub") {
 		t.Errorf("defaults %+v", o)
 	}
 	s := &models.Store{Hub: "/hub/of/store", BundleID: "dev.hehehai.dicta"}

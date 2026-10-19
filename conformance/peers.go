@@ -1,6 +1,7 @@
 package conformance
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -59,7 +60,12 @@ func (fx *Fixture) Register(bundleID string, sc ...shortcuts.Shortcut) string {
 		Shortcuts: sc, Links: map[string]string{registry.LinkShortcuts: a.URLScheme + "://settings"},
 	}
 	must(fx.T, registry.Write(fx.Family, m))
-	fx.Apps[bundleID] = models.AppState{BundleID: bundleID, AppID: a.ID, Name: a.Name, Installed: true}
+	fx.Apps[bundleID] = models.AppState{BundleID: bundleID, AppID: a.ID, Name: a.Name, Installed: true, ModelsRoot: fx.Hub}
+	// A peer on the spec v1.0.9 writes its claims file at launch, even
+	// empty (models.Store.Heal): without it, deletions are unsure.
+	if _, err := fx.Peer(bundleID).Heal(context.Background()); err != nil {
+		fx.T.Fatalf("%s: %v", bundleID, err)
+	}
 	return path
 }
 

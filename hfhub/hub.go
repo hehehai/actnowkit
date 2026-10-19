@@ -38,13 +38,11 @@ type Aux struct {
 	Files    []File `json:"files,omitempty"`
 }
 
-// CacheDir is the hub directory from the environment, huggingface_hub's
-// rules ($HF_HUB_CACHE, else $HF_HOME/hub, else ~/.cache/huggingface/hub).
-// Family apps use models.ResolveHub, which puts the family's choice first.
-func CacheDir() string {
-	h, _ := models.EnvHub()
-	return h
-}
+// CacheDir is the family's default model library, models.DefaultHub
+// ($FAMILY/models/hub; spec §7.1, v1.0.9). Family apps use
+// models.ResolveHub, which puts the family's choice (models.root) first.
+// Before v0.8.0 it was huggingface_hub's cache (models.EnvHub).
+func CacheDir() string { return models.DefaultHub() }
 
 // RepoDir is the cache directory of a repo id ("owner/name").
 func RepoDir(cacheDir, repo string) string { return models.RepoDir(cacheDir, repo) }
@@ -66,6 +64,10 @@ type Local struct {
 	// partial downloads of repos that are not Downloaded.
 	Bytes   int64
 	Missing []string // files absent; "<repo>:" for an auxiliary repo
+	// Damaged are files of the wrong size (truncated): the entry is
+	// Partial; Download or Verify repairs them. "<repo>:<path>" for an
+	// auxiliary repo.
+	Damaged []string
 }
 
 // UnknownOwner is Progress.WaitingFor when the holder of a blob lock left

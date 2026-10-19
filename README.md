@@ -42,6 +42,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`credentials`](credentials) | Shared API keys: the vendor table, the login-Keychain item `ActNow` / `vendor.<id>` through `/usr/bin/security`, `credentials.json` (hint, fingerprint, users), the consent flow. |
 | [`shortcuts`](shortcuts) | Canonical key combinations, the conflict rule, who shows the conflict prompt, the family's default assignments. |
 | [`runtime`](runtime) | Running-process files (`runtime/<bundle id>.json`: loaded models, memory budget, pasting flag) and the family memory budget. |
+| [`redact`](redact) | Secrets out of logs, error details and diagnostics: API keys and tokens in URL queries, presigned-URL signatures, `user:pass@` in proxy URLs, `Authorization` headers, well-known key shapes. |
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
 | [`cmd/actnow-conformance`](cmd/actnow-conformance) | Inspect a real family directory on a Mac: `check`, `discover`, `claims`, `lock`, `watch`, `pins`. |
@@ -57,15 +58,23 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 ├── models/claims/<bundle id>.json         each app's model claims (that app only)
 ├── models/removed.json                    "deleted for all apps" tombstones (multi-writer)
 ├── models/licences.json                   model licence acceptances (multi-writer)
+├── models/imported/<bundle id>.json       what the app brought over from Hugging Face caches (that app only)
+├── models/hub/                            $HUB, the model library (by default; see below)
 ├── runtime/<bundle id>.json               running process state (that app only)
 └── locks/<name>.lock                      flock locks of the multi-writer files
 
-$HUB = ~/.cache/huggingface/hub (or $HF_HUB_CACHE, $HF_HOME/hub, or the family's models.root)
+$HUB = $FAMILY/models/hub (or the family's models.root)       excluded from Time Machine unless models.backup is "on"
 ├── models--<owner>--<name>/{blobs,snapshots,refs}    the standard Hugging Face layout
+├── models--<owner>--<name>/.actnow/blobs.json        verified size of each blob (the "installed" check compares)
 ├── .locks/models--<owner>--<name>/<blob>.lock        blob locks (the same files huggingface_hub locks)
 ├── .locks/models--<owner>--<name>/actnow-repo.lock   repo lock: shared to download or claim, exclusive to finish or delete
 └── mlx-audio/<owner>_<name>/                         mlx-audio-swift's flat copies
 ```
+
+Since v0.8.0 (spec v1.0.9) the library is no longer `~/.cache/huggingface/hub`:
+`HF_HUB_CACHE`, `HF_HOME` and `~/.cache/huggingface/hub` are only where
+`Store.Import` finds models to bring over (hard links on the same volume),
+once per app.
 
 - Every file has `"schema": "actnow.<kind>/<major>"`. Readers ignore unknown
   members; writers keep them. A higher major is read-only.
@@ -125,6 +134,17 @@ store := &models.Store{
 	Apps: func() map[string]models.AppState { return registry.States(found) },
 }
 store.ApplyTombstones() // drop claims on models another app deleted for all apps
+
+// The library moved (v0.8.0): bring this app's models over from the
+// Hugging Face caches, once; nothing is downloaded, the caches stay as they are.
+backup := settings.ModelsBackup(famSettings)
+store.Import(ctx, models.LegacyHubs(hub), backup, wanted...)
+// The claims file lost with the family folder? Claim the installed models again
+// (at start-up and when the app becomes active).
+store.Heal(ctx, wanted...)
+// Time Machine: the library is excluded unless models.backup is "on"
+// (again when TopicSettings says it changed).
+models.ApplyBackup(fam, hub, backup)
 
 // Re-read on changes (and when the app becomes active).
 w, _ := fam.Watch(family.TopicApps, family.TopicSettings, family.TopicModels, family.TopicMemory)
@@ -204,7 +224,17 @@ exclusive to finish or delete), `HeldLock.Upgrade` and `HeldLock.Downgrade`
 (not atomic: re-check after either), `models.LockBlob` / `TryLockBlob`.
 
 Engines must be given the snapshot path (`models.SnapshotDir(hub, ref)`),
-never pick a snapshot themselves.
+never pick a snapshot themselves, and never resolve repos from
+`~/.cache/huggingface` on their own: pass them `hub` too (for mlx-audio's
+copies).
+
+`models.Check` compares each file's size with the verified size of its blob
+(`.actnow/blobs.json`, written by hfhub and `Store.Import`; an app's own
+downloader calls `models.RecordBlobSizes`) and with `Claim.Sizes` from the
+catalogue: a truncated file makes the model `Partial` (`Status.Damaged`).
+
+Logs: pass every line, error detail and exported file through
+`redact.Text` (or wrap errors with `redact.Error`).
 
 ### Shared API keys
 

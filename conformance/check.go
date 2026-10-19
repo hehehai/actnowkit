@@ -167,10 +167,14 @@ func Check(d family.Dir, hub string, sys registry.System) []Problem {
 			add("info", p, "left by a process that is gone (pid %d)", f.PID)
 		}
 	}
-	// Permissions, stray temporaries, secrets.
+	// Permissions, stray temporaries, secrets. The model library inside
+	// (models/hub, spec v1.0.9) is Hugging Face's layout, not family files.
 	filepath.WalkDir(d.Root, func(p string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
+		}
+		if de.IsDir() && p == models.DefaultHubIn(d) {
+			return filepath.SkipDir
 		}
 		fi, err := de.Info()
 		if err != nil {

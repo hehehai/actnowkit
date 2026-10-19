@@ -156,6 +156,16 @@ func (c *Client) finishRepo(ctx context.Context, p *plan, fetched bool) (*models
 	if err := linkSnapshot(repoDir, p.commit, p.files); err != nil {
 		return nil, err
 	}
+	sizes := map[string]int64{}
+	for _, f := range p.files {
+		sizes[f.blob] = f.Size
+	}
+	if err := models.RecordBlobSizes(c.opts.CacheDir, p.repo, sizes); err != nil {
+		return nil, err
+	}
+	if c.opts.Store != nil {
+		_ = models.MarkRepoBackup(c.opts.CacheDir, p.repo, c.backup())
+	}
 	ref := p.rev
 	if isCommit(ref) {
 		// A pinned commit is found by its path; tools that resolve the
@@ -378,6 +388,7 @@ func (c *Client) fetchBlobs(ctx context.Context, p *plan, progress func(Progress
 // waitBlob waits for a blob lock another process holds, calling waiting
 // with its owner's bundle id at every try.
 func (c *Client) waitBlob(ctx context.Context, repo, blob string, waiting func(owner string)) (*models.HeldLock, error) {
+	looked := false
 	for {
 		lock, err := models.TryLockBlob(c.opts.CacheDir, repo, blob, c.who(models.OpDownload))
 		var be *models.BusyError
@@ -387,7 +398,8 @@ func (c *Client) waitBlob(ctx context.Context, repo, blob string, waiting func(o
 		owner := UnknownOwner
 		if be.Owner == nil {
 			// The holder writes its owner file just after taking the
-			// lock: look again before calling it unknown.
+			// lock, and removes it as it lets go: look again, then try
+			// the lock once more, before calling it unknown.
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -395,8 +407,12 @@ func (c *Client) waitBlob(ctx context.Context, repo, blob string, waiting func(o
 			}
 			if o, ok := models.ReadOwner(models.BlobLockFile(c.opts.CacheDir, repo, blob)); ok {
 				be.Owner = &o
+			} else if !looked {
+				looked = true
+				continue
 			}
 		}
+		looked = false
 		if be.Owner != nil && be.Owner.BundleID != "" {
 			owner = be.Owner.BundleID
 		}

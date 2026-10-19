@@ -131,7 +131,11 @@ func Visible(found []Found) []Found {
 func States(found []Found) map[string]models.AppState {
 	out := map[string]models.AppState{}
 	for _, f := range found {
-		out[f.BundleID] = models.AppState{BundleID: f.BundleID, AppID: f.App.ID, Name: f.Name, Installed: f.Installed, Running: f.Running}
+		st := models.AppState{BundleID: f.BundleID, AppID: f.App.ID, Name: f.Name, Installed: f.Installed, Running: f.Running}
+		if f.Manifest != nil && f.Manifest.Models != nil {
+			st.ModelsRoot = f.Manifest.Models.Root
+		}
+		out[f.BundleID] = st
 	}
 	return out
 }

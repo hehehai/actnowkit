@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/hehehai/actnowkit/family"
 )
 
 // Ref is a model's identity: repo@commit (spec §7.2).
@@ -60,22 +62,43 @@ func IsCommit(rev string) bool { return commitRE.MatchString(rev) }
 type HubSource string
 
 const (
-	FromFamily  HubSource = "family"       // settings.json models.root
-	FromApp     HubSource = "app"          // the app's own folder, when it does not follow the family
-	FromEnvHub  HubSource = "HF_HUB_CACHE" // environment
-	FromEnvHome HubSource = "HF_HOME"      // environment: $HF_HOME/hub
-	FromDefault HubSource = "default"      // ~/.cache/huggingface/hub
+	FromFamily  HubSource = "family"  // settings.json models.root
+	FromApp     HubSource = "app"     // the app's own folder, when it does not follow the family
+	FromDefault HubSource = "default" // $FAMILY/models/hub (DefaultHub)
+	// FromEnvHub and FromEnvHome name Hugging Face caches found through
+	// the environment: since v0.8.0 they are import sources only
+	// (LegacyHubs), never $HUB.
+	FromEnvHub  HubSource = "HF_HUB_CACHE"
+	FromEnvHome HubSource = "HF_HOME"
+	// FromHFDefault is ~/.cache/huggingface/hub, huggingface_hub's default
+	// and the family's $HUB before v0.8.0 (spec v1.0.8 and older).
+	FromHFDefault HubSource = "hf-default"
 )
+
+// HubDirName is the default hub's directory under $FAMILY/models.
+const HubDirName = "hub"
+
+// DefaultHub is the family's default model library (spec §7.1, v1.0.9):
+// $FAMILY/models/hub, i.e. ~/Library/Application Support/ActNow/models/hub
+// (it follows ACTNOW_FAMILY_DIR). The layout inside is Hugging Face's
+// (models--owner--name/{blobs,snapshots,refs}), so engines and hfhub only
+// change their root.
+func DefaultHub() string { return DefaultHubIn(family.Default()) }
+
+// DefaultHubIn is the default hub of a family directory.
+func DefaultHubIn(d family.Dir) string { return filepath.Join(d.ModelsDir(), HubDirName) }
 
 // ResolveHub finds $HUB (spec §7.1), the first that is set of:
 //
 //  1. familyRoot, settings.json models.root, when the app follows the family;
 //  2. own, the app's private folder, when it does not;
-//  3. $HF_HUB_CACHE;
-//  4. $HF_HOME/hub;
-//  5. ~/.cache/huggingface/hub.
+//  3. DefaultHub: $FAMILY/models/hub.
 //
-// Steps 3–5 are huggingface_hub's own rules, so existing caches stay put.
+// HF_HUB_CACHE and HF_HOME no longer choose it (spec v1.0.9): an app
+// started from Finder and one started from a shell would use different
+// folders. The Hugging Face caches they name are where Import looks for
+// models to bring over (LegacyHubs); a user who wants the family to share
+// one of them picks it as the model folder (models.root).
 func ResolveHub(follow bool, familyRoot, own string) (string, HubSource) {
 	if follow && familyRoot != "" {
 		return filepath.Clean(familyRoot), FromFamily
@@ -83,10 +106,13 @@ func ResolveHub(follow bool, familyRoot, own string) (string, HubSource) {
 	if !follow && own != "" {
 		return filepath.Clean(own), FromApp
 	}
-	return EnvHub()
+	return DefaultHub(), FromDefault
 }
 
-// EnvHub is $HUB from the environment alone (steps 3–5 of ResolveHub).
+// EnvHub is the Hugging Face cache huggingface_hub would use, from the
+// environment alone: $HF_HUB_CACHE, else $HF_HOME/hub, else
+// ~/.cache/huggingface/hub. It was $HUB's fallback before v0.8.0; now it
+// is the first of LegacyHubs.
 func EnvHub() (string, HubSource) {
 	if d := os.Getenv("HF_HUB_CACHE"); d != "" {
 		return d, FromEnvHub
@@ -94,8 +120,42 @@ func EnvHub() (string, HubSource) {
 	if d := os.Getenv("HF_HOME"); d != "" {
 		return filepath.Join(d, "hub"), FromEnvHome
 	}
+	return HFDefaultHub(), FromHFDefault
+}
+
+// HFDefaultHub is ~/.cache/huggingface/hub.
+func HFDefaultHub() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cache", "huggingface", "hub"), FromDefault
+	return filepath.Join(home, ".cache", "huggingface", "hub")
+}
+
+// LegacyHubs are the Hugging Face caches models may be imported from
+// (Store.Import): $HF_HUB_CACHE, $HF_HOME/hub and ~/.cache/huggingface/hub,
+// each once, those that exist and are not hub itself.
+func LegacyHubs(hub string) []string {
+	var out []string
+	add := func(p string) {
+		if p == "" || !filepath.IsAbs(p) || SameHub(p, hub) || !isDir(p) {
+			return
+		}
+		for _, o := range out {
+			if SameHub(o, p) {
+				return
+			}
+		}
+		out = append(out, filepath.Clean(p))
+	}
+	add(os.Getenv("HF_HUB_CACHE"))
+	if d := os.Getenv("HF_HOME"); d != "" {
+		add(filepath.Join(d, "hub"))
+	}
+	add(HFDefaultHub())
+	return out
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }
 
 // RepoFolder is a repo's directory name: "models--owner--name".

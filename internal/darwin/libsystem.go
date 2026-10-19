@@ -19,6 +19,12 @@ var (
 	notifyPost                   func(name string) uint32
 	notifyRegisterFileDescriptor func(name string, fd *int32, flags int32, token *int32) uint32
 	notifyCancel                 func(token int32) uint32
+
+	setxattr    func(path, name string, value *byte, size uintptr, position uint32, options int32) int32
+	getxattr    func(path, name string, value *byte, size uintptr, position uint32, options int32) int
+	removexattr func(path, name string, options int32) int32
+	procPidpath func(pid int32, buf *byte, size uint32) int32
+	errnoLoc    func() *int32
 )
 
 func loadLibSystem() error {
@@ -31,6 +37,11 @@ func loadLibSystem() error {
 		purego.RegisterLibFunc(&notifyPost, lib, "notify_post")
 		purego.RegisterLibFunc(&notifyRegisterFileDescriptor, lib, "notify_register_file_descriptor")
 		purego.RegisterLibFunc(&notifyCancel, lib, "notify_cancel")
+		purego.RegisterLibFunc(&setxattr, lib, "setxattr")
+		purego.RegisterLibFunc(&getxattr, lib, "getxattr")
+		purego.RegisterLibFunc(&removexattr, lib, "removexattr")
+		purego.RegisterLibFunc(&procPidpath, lib, "proc_pidpath")
+		purego.RegisterLibFunc(&errnoLoc, lib, "__error")
 	})
 	return libSystemErr
 }
