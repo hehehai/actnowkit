@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.7.2 — 2026-10-19
+
+A pins table update; nothing else changed.
+
+- `models`: the Qwen3-ForcedAligner 0.6B 4-bit pin lists Act, which now
+  uses it (optional subtitle timing, M5) at the same commit, so the other
+  apps do not clean it up while Act may use it.
+
 ## v0.7.1 — 2026-10-19
 
 A fix to the default shortcut table; nothing else changed.

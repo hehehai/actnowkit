@@ -46,7 +46,7 @@
       "quant": "4bit",
       "role": "align",
       "bytes": 975857419,
-      "apps": ["audiosmith", "dicta"]
+      "apps": ["audiosmith", "dicta", "act"]
     },
     {
       "repo": "mlx-community/silero-vad",

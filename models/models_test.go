@@ -556,12 +556,13 @@ func TestPins(t *testing.T) {
 	if len(PinsOfFamily("qwen3-asr")) < 2 || len(PinsOfApp("dicta")) < 9 {
 		t.Error("pin queries")
 	}
-	// Act's catalogue: EmbeddingGemma 2 (its own pin, role embed) and three
-	// models it shares with Dicta, AudioSmith and VoxtNew.
+	// Act's catalogue: EmbeddingGemma 2 (its own pin, role embed) and four
+	// models it shares with Dicta, AudioSmith and VoxtNew (the forced
+	// aligner since v0.7.2).
 	if p, ok := PinOf("mlx-community/embeddinggemma-2-8bit"); !ok || p.Role != RoleEmbed || p.Family != "embeddinggemma2" {
 		t.Errorf("embeddinggemma pin %+v", p)
 	}
-	if len(PinsOfApp("act")) != 4 {
+	if len(PinsOfApp("act")) != 5 {
 		t.Errorf("act pins: %d", len(PinsOfApp("act")))
 	}
 }
