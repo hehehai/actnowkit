@@ -208,5 +208,5 @@ func securityError(status int32) error {
 	case errSecCSSignatureFail:
 		return errors.New("the signature is invalid (the app was changed)")
 	}
-	return fmt.Errorf("code signature check: status %d", status)
+	return fmt.Errorf("code signature check failed (status %d): the app was changed, or is not signed by the team", status)
 }
