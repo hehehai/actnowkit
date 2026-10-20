@@ -1,0 +1,16 @@
+{
+  "note": "A token signed by the site (dev key, local server, 2026-10-20) for the device of platformUUID+salt.",
+  "platformUUID": "6C1A5C38-1D0B-5E3A-9F55-0A1B2C3D4E5F",
+  "salt": "dev.hehehai.captioncraft/fixture",
+  "deviceId": "f4852d632e90ba2d5f2bf63587b7151f4aacf164c7b732be2cef8ab2a546778b",
+  "nonce": "NwfhNSrAZZf00hQCi4Mi1w",
+  "keys": [
+    {
+      "kid": "dev",
+      "alg": "Ed25519",
+      "publicKey": "Z29b1ES9vFPeg57/nWHqEaX/YLYvVXJdn3RJK7z7gs4="
+    }
+  ],
+  "token": "anl1.dev.eyJ2IjoxLCJjaWQiOiIzYjgwYjFmYi01ZmQwLTRmNmUtODkyZC1iZjE5NDQxNjcyYmMiLCJhaWQiOiIxMjAyMTRkYi0zMTQzLTRmYTEtYjQ2MC02Mjk0N2QxMmY0M2UiLCJwcmQiOiJjYXB0aW9uY3JhZnQiLCJhcHAiOiJjYXB0aW9uY3JhZnQiLCJlZCI6IndoaXRlbGlzdCIsImRldiI6ImY0ODUyZDYzMmU5MGJhMmQ1ZjJiZjYzNTg3YjcxNTFmNGFhY2YxNjRjN2I3MzJiZTJjZWY4YWIyYTU0Njc3OGIiLCJ2ZXIiOiIwLjMuMCIsInBzIjpudWxsLCJpYXQiOjE3OTI0OTkzMDMsInJmYSI6MTc5MzEwNDEwMywiZXhwIjoxNzk1MDkxMzAzLCJsZXhwIjoxODAwNDQ4MTAzLCJtZCI6Miwibm9uY2UiOiJOd2ZoTlNyQVpaZjAwaFFDaTRNaTF3In0.ZjsJy20TSrosewd3xYzY15pjd0x4amzNT2hRtTNOyk-ziqA7GQPbt4PF5yl9kvfdSW-ZqIRMRrIK55tBXELGCA",
+  "codeId": "3b80b1fb-5fd0-4f6e-892d-bf19441672bc"
+}
