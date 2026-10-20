@@ -19,11 +19,12 @@ package checks either.
   they compile to no-ops, so the logic is tested on Linux.
 - No UI, no dependency on MyGo, no i18n: packages export English and Chinese
   reference strings (`family.Text`) for apps to put in their own catalogues.
-- Status: **v0.6** — `hfhub` is experimental; the other packages follow the
+  `updates` takes MyGo's updater as two functions.
+- Status: **v0.10** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.7.0
+go get github.com/hehehai/actnowkit@v0.10.0
 go mod tidy   # adds purego, which only the darwin files import
 ```
 
@@ -44,6 +45,8 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`runtime`](runtime) | Running-process files (`runtime/<bundle id>.json`: loaded models, memory budget, pasting flag) and the family memory budget. |
 | [`redact`](redact) | Secrets out of logs, error details and diagnostics: API keys and tokens in URL queries, presigned-URL signatures, `user:pass@` in proxy URLs, `Authorization` headers, well-known key shapes. |
 | [`sounds`](sounds) | Cue sounds: the catalogue an app ships (`catalog.json` + audio, read from the app's `fs.FS`; actnowkit carries no audio), each event's choice (a catalogue sound, a macOS system sound, none), filters for a picker (group, tags, text, suggested uses), previews, and a low-latency player (AVAudioEngine on macOS). |
+| [`licence`](licence) | The app's licence on this Mac, against actnow.dev ([docs/licensing.md](https://github.com/hehehai/actnow-www/blob/main/docs/licensing.md) of the site): activation with a code, Ed25519 tokens bound to the Mac's device ID (IOPlatformUUID + the app's salt, hashed) and verified offline with the embedded `ProductionKeys`, the app's own Keychain item, refresh every 7 days, 30 days offline, clock-rollback detection, early-access (whitelist) codes stopping at `paid_since`, the device limit, the account page for removing a Mac, the app's own code-signature check (Team ID 779M533DL5), texts. |
+| [`updates`](updates) | In-app updates on MyGo's updater API without MyGo's window: the state machine (checking, available, downloading with progress, ready to restart, failed), release notes in the app's language from actnow.dev's changelog API (English where a release has none), the history for Settings → About, automatic checks, and the "needs a paid licence" warning for early-access users. |
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
 | [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
@@ -398,6 +401,94 @@ sel.Clear()                            // copying clears the selection
 wordings (English and Chinese) for the apps' catalogues. The family's
 interaction spec (header, context menu, colours, tests) is VoxtNew's
 reference implementation.
+
+### Licences (paid apps)
+
+```go
+import "github.com/hehehai/actnowkit/licence"
+
+lic, err := licence.New(licence.Config{
+	App:        "captioncraft",                          // the site's slug
+	Version:    version,                                 // mygo.App.Version()
+	DeviceSalt: "dev.hehehai.captioncraft/9d1c4e7a5b20", // a constant of the app
+	Keys:       licence.ProductionKeys(),                // embedded; never fetched
+	Store:      licence.NewKeychainStore(bundleID),      // "<bundle id>.licence", not the shared item
+})
+if err != nil {
+	return err
+}
+// Release builds: refuse a copy someone patched and signed again.
+if releaseBuild && licence.VerifySelf(licence.TeamActNow) != nil {
+	// treat as not licensed
+}
+st := lic.Status() // offline, at once: draw the first window from it
+wake := lic.Run(ctx, func(st licence.Status) {
+	// Usable → the app; Inactive/Revoked → activation page; Expired →
+	// "needs renewal" (keep the data); WhitelistNotApplicable → "needs a
+	// paid licence"; NeedsRefresh with ReasonUpdated or ReasonClock →
+	// "connect to the internet". Texts: licence.StateText(st).Fill(…).
+})
+_ = wake // call after wake from sleep or when the network returns
+
+// The activation page.
+st, err = lic.Activate(ctx, typedCode)
+if st.State == licence.DeviceLimit {
+	// st.Devices (name, activated), st.ManageURL: Macs are removed on the site.
+}
+var apiErr *licence.APIError
+if errors.As(err, &apiErr) {
+	_ = licence.ErrorText(apiErr.Code) // wrong code, other app, revoked…
+}
+_ = lic.ManageURL(st.Token.CodeID) // "Remove a Mac…" opens this
+_ = lic.EarlyAccessURL()           // "Request early access"
+```
+
+- The token is checked offline at every launch; `Run` refreshes it when it
+  is 7 days old, retries after 1, 5, 30 minutes and 2 hours when offline
+  (`Grace`: still usable), and it stops working 30 days after the last
+  refresh (`Expired`, `ReasonOffline`).
+- Early access: an app version at or above the site's `paid_since` refuses
+  whitelist tokens; an early-access user who updates must go online once
+  (`NeedsRefresh`, `ReasonUpdated`), so a `paid_since` set later still
+  applies. Older builds keep working until the code expires.
+- A clock set back more than 10 minutes needs a refresh (`ReasonClock`); a
+  Mac whose clock is simply wrong works after one, with the offset kept.
+
+### In-app updates
+
+```go
+import "github.com/hehehai/actnowkit/updates"
+
+up := updates.New(updates.Config{
+	Current: version,
+	Updater: updates.Funcs{
+		EnabledFunc: mygo.Updater.Enabled,
+		CheckFunc: func(ctx context.Context) (*updates.Release, error) {
+			u, err := mygo.Updater.Check(ctx)
+			if err != nil || u == nil {
+				return nil, err
+			}
+			return &updates.Release{Version: u.Version, Notes: u.Notes, Date: u.Date, Install: u.Install}, nil
+		},
+	},
+	History:  &updates.HistoryClient{App: "captioncraft"}, // actnow.dev's changelog API
+	Language: func() string { return currentLanguage },    // "zh-Hans" or "en"
+	Beta:     func() bool { return betaUpdates },
+	Licence:  lic.Status,                                  // paid apps: the early-access warning
+	Restart:  mygo.App.Relaunch,
+	Log:      func(line string) { log.Print("updates: ", line) },
+})
+up.Subscribe(func(s updates.State) { /* the "update available" badge and panel */ })
+up.AutoCheck(ctx, 24*time.Hour, func() bool { return autoCheck })
+
+s := up.Check(ctx)        // Available: s.Release.Version, s.Notes (Markdown, the app's language)
+if s.NeedsPaidLicence {   // early access and version ≥ paid_since
+	_ = updates.TextNeedsPaid // the user may keep the version they have
+}
+s = up.Install(ctx, userAcceptedPaid) // Downloading (s.Fraction()) → Ready, or Failed (app unchanged)
+_ = up.Restart()                      // Ready → the new version
+history, _ := up.History(ctx)         // Settings → About → Changelog
+```
 
 ## Conformance
 

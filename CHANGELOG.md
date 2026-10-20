@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.10.0 — 2026-10-20
+
+Licences and in-app updates for the paid apps (CaptionCraft first). The
+protocol is the site's docs/licensing.md.
+
+- New package `licence`: `New(Config)` → `Client` with `Status` (offline,
+  from the stored token), `Activate` (a code typed loosely; `DeviceLimit`
+  with the bound Macs), `Refresh`, `Check`, `Run` (checks every 6 h,
+  refreshes at 7 days, retries after 1/5/30 min and 2 h, `wake`),
+  `ServerStatus`, `Forget`, `ManageURL`, `EarlyAccessURL`,
+  `ActivationHelpURL`. Tokens `anl1.<kid>.<payload>.<sig>` are verified with
+  Ed25519 (`ParseToken`, `ProductionKeys`: kid `lk-2026-10`) and must name
+  this app, this Mac (`DeviceID`: IOPlatformUUID + the app's salt, SHA-256,
+  through IOKit with purego) and the request's nonce. States `Inactive`,
+  `Valid`, `NeedsRefresh` (due / updated / clock), `Grace` (30 days
+  offline), `Expired` (code ended / offline too long),
+  `WhitelistNotApplicable` (early access at or above `paid_since`),
+  `DeviceLimit`, `Revoked` (code revoked / Mac removed). The clock check
+  keeps the latest time seen and the server offset (`Record`). Stores:
+  `NewKeychainStore(bundleID)` (the app's own `<bundle id>.licence` item,
+  through credentials' Keychain), `MemoryStore`. `VerifySelf` /
+  `VerifyBundle` check a code signature against `TeamRequirement`
+  (`TeamActNow`, 779M533DL5) with the Security framework. `ThisDevice` (the
+  computer name, model, macOS version). `CompareVersions`,
+  `WhitelistBlocked`. Texts (`StateText`, `ErrorText`, `Text…`) in English
+  and Chinese.
+- New package `updates`: a `Manager` over MyGo's updater API (passed as
+  `Funcs`; actnowkit still does not import MyGo): `Check` → `Available`
+  with the notes in the app's language from actnow.dev's changelog API
+  (`HistoryClient`, `NotesLocale`; English where a release has none, the
+  manifest's notes when the API is unreachable), `Install` with progress
+  (`Downloading` → `Ready`; `Failed` leaves the app unchanged), `Restart`,
+  `Dismiss`, `History` (Settings → About), `AutoCheck`, `Subscribe`.
+  Early-access users get `NeedsPaidLicence` for updates at or above
+  `paid_since` (`Install` needs `acceptPaid`; `TextNeedsPaid`).
+- `internal/darwin`: `PlatformUUID`, `ComputerName`, `CheckSelfRequirement`,
+  `CheckBundleRequirement`.
+
 ## v0.9.1 — 2026-10-20
 
 - `sounds`: for the pickers' second look: `Player.Previewing` (the choice

@@ -7,11 +7,14 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/hehehai/actnowkit/credentials"
 	"github.com/hehehai/actnowkit/family"
 	"github.com/hehehai/actnowkit/hfhub"
+	"github.com/hehehai/actnowkit/licence"
 	"github.com/hehehai/actnowkit/models"
 	"github.com/hehehai/actnowkit/redact"
 	"github.com/hehehai/actnowkit/registry"
@@ -19,6 +22,7 @@ import (
 	"github.com/hehehai/actnowkit/settings"
 	"github.com/hehehai/actnowkit/shortcuts"
 	"github.com/hehehai/actnowkit/sounds"
+	"github.com/hehehai/actnowkit/updates"
 )
 
 type ownSettings struct{ Language, Proxy, Endpoints, ModelsFolder string }
@@ -176,3 +180,85 @@ func soundsExample(resources fs.FS, row sounds.Sound) {
 }
 
 func TestSoundsReadmeCompiles(t *testing.T) { _ = soundsExample }
+
+// fakeMyGo stands in for MyGo's updater and app in the snippets below.
+type fakeMyGoUpdate struct {
+	Version, Notes string
+	Date           time.Time
+}
+
+func (u *fakeMyGoUpdate) Install(ctx context.Context, progress func(downloaded, total int64)) error {
+	return nil
+}
+
+var mygo = struct {
+	Updater struct {
+		Enabled func() bool
+		Check   func(ctx context.Context) (*fakeMyGoUpdate, error)
+	}
+	App struct{ Relaunch func() }
+}{}
+
+// licenceExample mirrors README.md's "Licences (paid apps)".
+func licenceExample(ctx context.Context, version, bundleID, typedCode string, releaseBuild bool) error {
+	lic, err := licence.New(licence.Config{
+		App:        "captioncraft",
+		Version:    version,
+		DeviceSalt: "dev.hehehai.captioncraft/9d1c4e7a5b20",
+		Keys:       licence.ProductionKeys(),
+		Store:      licence.NewKeychainStore(bundleID),
+	})
+	if err != nil {
+		return err
+	}
+	if releaseBuild && licence.VerifySelf(licence.TeamActNow) != nil {
+	}
+	st := lic.Status()
+	wake := lic.Run(ctx, func(st licence.Status) {})
+	_ = wake
+	st, err = lic.Activate(ctx, typedCode)
+	if st.State == licence.DeviceLimit {
+	}
+	var apiErr *licence.APIError
+	if errors.As(err, &apiErr) {
+		_ = licence.ErrorText(apiErr.Code)
+	}
+	_ = lic.ManageURL(st.Token.CodeID)
+	_ = lic.EarlyAccessURL()
+
+	// updatesExample mirrors README.md's "In-app updates".
+	var currentLanguage string
+	var betaUpdates, autoCheck, userAcceptedPaid bool
+	up := updates.New(updates.Config{
+		Current: version,
+		Updater: updates.Funcs{
+			EnabledFunc: mygo.Updater.Enabled,
+			CheckFunc: func(ctx context.Context) (*updates.Release, error) {
+				u, err := mygo.Updater.Check(ctx)
+				if err != nil || u == nil {
+					return nil, err
+				}
+				return &updates.Release{Version: u.Version, Notes: u.Notes, Date: u.Date, Install: u.Install}, nil
+			},
+		},
+		History:  &updates.HistoryClient{App: "captioncraft"},
+		Language: func() string { return currentLanguage },
+		Beta:     func() bool { return betaUpdates },
+		Licence:  lic.Status,
+		Restart:  mygo.App.Relaunch,
+		Log:      func(line string) { log.Print("updates: ", line) },
+	})
+	up.Subscribe(func(s updates.State) {})
+	up.AutoCheck(ctx, 24*time.Hour, func() bool { return autoCheck })
+	s := up.Check(ctx)
+	if s.NeedsPaidLicence {
+		_ = updates.TextNeedsPaid
+	}
+	s = up.Install(ctx, userAcceptedPaid)
+	_ = up.Restart()
+	history, _ := up.History(ctx)
+	_, _ = s, history
+	return nil
+}
+
+func TestLicenceReadmeCompiles(t *testing.T) { _ = licenceExample }
