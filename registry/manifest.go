@@ -57,6 +57,10 @@ const (
 	CapEmbedLocal = "embed.local"
 	// CapVLMLocal: a local vision language model (image understanding).
 	CapVLMLocal = "vlm.local"
+	// CapMail: a local mail client. Such an app opens
+	// mailto:<address>[?subject=…&body=…] and <scheme>://compose[?to=…&subject=…&body=…]
+	// (a new message, not sent) and <scheme>://thread?id=<message id>.
+	CapMail = "mail"
 )
 
 // Link keys of Manifest.Links.

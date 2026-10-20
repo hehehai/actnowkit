@@ -569,6 +569,11 @@ func TestPins(t *testing.T) {
 	if len(PinsOfApp("act")) != 5 {
 		t.Errorf("act pins: %d", len(PinsOfApp("act")))
 	}
+	// Inboxly's catalogue: EmbeddingGemma 2 and Qwen3.5 2B with Act, Qwen3
+	// 4B with AudioSmith and Dicta.
+	if len(PinsOfApp("inboxly")) != 3 {
+		t.Errorf("inboxly pins: %d", len(PinsOfApp("inboxly")))
+	}
 }
 
 func TestSharedWithinApp(t *testing.T) {

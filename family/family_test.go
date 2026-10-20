@@ -310,6 +310,10 @@ func TestParseBundleID(t *testing.T) {
 		{"dev.hehehai.act.dev", "act", Dev, nil},
 		{"dev.hehehai.act.e2e", "act", Test, nil},
 		{"dev.hehehai.act.engine", "act", "", ErrComponent},
+		{"dev.hehehai.inboxly", "inboxly", Release, nil},
+		{"dev.hehehai.inboxly.dev", "inboxly", Dev, nil},
+		{"dev.hehehai.inboxly.e2e", "inboxly", Test, nil},
+		{"dev.hehehai.inboxly.engine", "inboxly", "", ErrComponent},
 		{"Dev.Hehehai.Dicta", "dicta", Release, nil},
 		{"dev.hehehai.auralink.helper", "auralink", "", ErrComponent},
 		{"dev.hehehai.dicta.engine", "dicta", "", ErrComponent},
@@ -343,6 +347,9 @@ func TestParseBundleID(t *testing.T) {
 	}
 	if a, _ := AppByID("act"); a.Name != "Act" || a.TeamID != TeamActNow || a.URLScheme != "act" || a.ProductURL != "https://actnow.dev/act" {
 		t.Error("Act row")
+	}
+	if a, _ := AppByID("inboxly"); a.Name != "Inboxly" || a.TeamID != TeamActNow || a.URLScheme != "inboxly" || a.BundleID != "dev.hehehai.inboxly" || a.ProductURL != "https://actnow.dev/inboxly" {
+		t.Error("Inboxly row")
 	}
 }
 

@@ -1,6 +1,6 @@
 {
   "schema": "actnow.models.pins/1",
-  "updated": "2026-10-19",
+  "updated": "2026-10-20",
   "pins": [
     {
       "repo": "mlx-community/Qwen3-ASR-0.6B-4bit",
@@ -89,7 +89,7 @@
       "quant": "4bit",
       "role": "llm",
       "bytes": 2278969697,
-      "apps": ["audiosmith", "dicta"]
+      "apps": ["audiosmith", "dicta", "inboxly"]
     },
     {
       "repo": "mlx-community/gemma-4-e4b-it-4bit",
@@ -124,7 +124,7 @@
       "family": "qwen3.5",
       "quant": "4bit",
       "role": "llm",
-      "apps": ["voxtnew", "act"]
+      "apps": ["voxtnew", "act", "inboxly"]
     },
     {
       "repo": "tencent/Hy-MT2-1.8B-GGUF",
@@ -151,7 +151,7 @@
       "quant": "8bit",
       "role": "embed",
       "bytes": 1266419318,
-      "apps": ["act"],
+      "apps": ["act", "inboxly"],
       "note": "Act's search by meaning; another app adding semantic search can reuse it without a download."
     }
   ]

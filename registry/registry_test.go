@@ -141,6 +141,26 @@ func TestLibraryManifest(t *testing.T) {
 	}
 }
 
+// TestMailManifest: Inboxly's manifest, as another app ("Send with
+// Inboxly") finds it by capability.
+func TestMailManifest(t *testing.T) {
+	d := family.At(t.TempDir())
+	m := manifest("dev.hehehai.inboxly", "/Applications/Inboxly.app")
+	m.URLScheme = "inboxly"
+	m.Capabilities = []string{CapModelsHF, CapMail}
+	if err := Write(d, m); err != nil {
+		t.Fatal(err)
+	}
+	ms, errs := List(d)
+	if len(ms) != 1 || len(errs) != 0 {
+		t.Fatalf("%d manifests, errs %v", len(ms), errs)
+	}
+	got := ms[0]
+	if got.App != "inboxly" || got.URLScheme != "inboxly" || !got.Has(CapMail) || got.Has(CapLibrary) {
+		t.Errorf("%+v", got)
+	}
+}
+
 func TestDiscover(t *testing.T) {
 	d := family.At(t.TempDir())
 	apps := t.TempDir()

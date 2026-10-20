@@ -45,6 +45,9 @@ var Defaults = []Default{
 	// Act: the quick collect panel, S for "save" (its screenshot
 	// shortcuts have no default keys).
 	{"act", Shortcut{ID: "quickCollect", Title: "Quick Collect", Keys: "Control+Option+Command+S", Trigger: Press, Enabled: true, Mechanism: Carbon}},
+
+	// Inboxly: a new message from anywhere, N for "new".
+	{"inboxly", Shortcut{ID: "quickCompose", Title: "Quick Compose", Keys: "Control+Option+Command+N", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 }
 
 // DefaultsOf lists an app's default shortcuts.

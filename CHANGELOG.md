@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.11.0 — 2026-10-20
+
+Inboxly joins the family, with the capability and pins it uses; nothing
+else changed, so code written for v0.10 builds and behaves as before (new
+rows and constants only).
+
+- `family`: Inboxly joins the table (`inboxly`, `dev.hehehai.inboxly`, URL
+  scheme `inboxly`, https://actnow.dev/inboxly, team `TeamActNow`). Its
+  engine (`dev.hehehai.inboxly.engine`) is a component, not an app.
+- `shortcuts`: Inboxly's default, Quick Compose on
+  `Control+Option+Command+N` (Carbon, enabled), free in the family table
+  (Pik's picker is ⌃⌥⌘P, HereNow's panel ⌃⌥⌘H, Act's Quick Collect ⌃⌥⌘S,
+  Dicta's reserved meeting key ⌃⌥⌘R).
+- `registry`: new capability `CapMail` (`"mail"`: a local mail client that
+  opens `mailto:` links, `<scheme>://compose[?to=…&subject=…&body=…]` and
+  `<scheme>://thread?id=<message id>`).
+- `models`: the pins table lists Inboxly on the three pins its catalogue
+  shares (EmbeddingGemma 2 and Qwen3.5 2B with Act, Qwen3 4B Instruct 2507
+  with AudioSmith and Dicta), so the other apps do not clean them up while
+  Inboxly may use them.
+
 ## v0.10.0 — 2026-10-20
 
 Licences and in-app updates for the paid apps (CaptionCraft first). The

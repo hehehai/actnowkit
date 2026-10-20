@@ -96,6 +96,9 @@ func TestDefaultsDisjoint(t *testing.T) {
 	if d := DefaultsOf("act"); len(d) != 1 || d[0].ID != "quickCollect" || d[0].Keys != "Control+Option+Command+S" || !d[0].Enabled || d[0].Mechanism != Carbon {
 		t.Errorf("act defaults %+v", d)
 	}
+	if d := DefaultsOf("inboxly"); len(d) != 1 || d[0].ID != "quickCompose" || d[0].Keys != "Control+Option+Command+N" || !d[0].Enabled || d[0].Mechanism != Carbon {
+		t.Errorf("inboxly defaults %+v", d)
+	}
 	if d := DefaultsOf("herenow"); len(d) != 1 || d[0].ID != "openPanel" || d[0].Keys != "Control+Option+Command+H" || !d[0].Enabled {
 		t.Error("HereNow defaults")
 	}
