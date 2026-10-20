@@ -6,6 +6,7 @@ package readme
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"testing"
 
 	"github.com/hehehai/actnowkit/credentials"
@@ -17,6 +18,7 @@ import (
 	famruntime "github.com/hehehai/actnowkit/runtime"
 	"github.com/hehehai/actnowkit/settings"
 	"github.com/hehehai/actnowkit/shortcuts"
+	"github.com/hehehai/actnowkit/sounds"
 )
 
 type ownSettings struct{ Language, Proxy, Endpoints, ModelsFolder string }
@@ -144,3 +146,30 @@ func readmeExamples(ctx context.Context) {
 }
 
 func TestReadmeCompiles(t *testing.T) { _ = readmeExamples }
+
+// soundsExample mirrors README.md's "Cue sounds".
+func soundsExample(resources fs.FS, row sounds.Sound) {
+	cat, err := sounds.Load(resources, "sounds")
+	_ = err
+	player := sounds.NewPlayer(cat, nil)
+
+	var recordStart = sounds.Event{ID: "record.start", Name: sounds.Text{En: "Start recording", Zh: "开始录音"},
+		Default: "tally", Fallback: "Pop", Uses: []string{"record.start"}}
+
+	prefs := sounds.DefaultPrefs()
+	player.Preload(prefs.Choice(recordStart))
+	player.PlayEvent(recordStart, prefs)
+	t := prefs.Target(cat, recordStart)
+	_ = t.Length(cat)
+
+	f := sounds.Filter{Group: "notify", Tags: []string{"soft"}, Query: "bell"}
+	rows := cat.Filter(f)
+	_, _ = cat.GroupCounts(f), cat.TagCounts(f, true)
+	suggested := cat.Suggested(recordStart)
+	_, _ = rows, suggested
+	player.Preview(row.ID, "", prefs.Volume)
+	prefs.Choose(recordStart, row.ID)
+	player.Preview(prefs.Choice(recordStart), recordStart.Fallback, prefs.Volume)
+}
+
+func TestSoundsReadmeCompiles(t *testing.T) { _ = soundsExample }

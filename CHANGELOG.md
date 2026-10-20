@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.9.0 — 2026-10-20
+
+- New package `sounds`: the family's cue sounds. `Load` reads an app's
+  `catalog.json` (schema `actnow.sounds.catalog/1`: groups, tags, uses,
+  sounds with names in English and Chinese, durations, pairs, the system
+  sounds each replaces, SHA-256) from the app's `fs.FS`; actnowkit ships no
+  audio. `Event`, `Prefs` (on, volume, a choice per event: a sound, `none`
+  or `system:<name>`), `Target`, `Resolve` with a system-sound fallback for
+  builds without the catalogue, `MigrateSystem` / `MigrateClosest` for old
+  settings; `Filter`, `GroupCounts`, `TagCounts`, `Suggested` for pickers;
+  `Player` (`Preload`, `PlayEvent`, `Preview` cutting off the last one,
+  `StopPreview`). macOS output: WAV decoded into an AVAudioEngine with 8
+  player nodes (starts in microseconds, repeats overlap, the engine stops
+  after 5 s idle), AVAudioPlayer for other files, NSSound for system
+  sounds; `Silent` elsewhere; `Recorder` for tests. `DecodeWAV`, `ToneWAV`.
+- New command `cmd/actnow-sounds`: `list`, `check`, `subset` (the sounds an
+  app ships, with their catalogue and a size limit), `play` (macOS).
+
 ## v0.8.0 — 2026-10-19
 
 The family audit's first batch (spec v1.0.9). **The model library moves**:

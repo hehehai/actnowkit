@@ -43,8 +43,10 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`shortcuts`](shortcuts) | Canonical key combinations, the conflict rule, who shows the conflict prompt, the family's default assignments. |
 | [`runtime`](runtime) | Running-process files (`runtime/<bundle id>.json`: loaded models, memory budget, pasting flag) and the family memory budget. |
 | [`redact`](redact) | Secrets out of logs, error details and diagnostics: API keys and tokens in URL queries, presigned-URL signatures, `user:pass@` in proxy URLs, `Authorization` headers, well-known key shapes. |
+| [`sounds`](sounds) | Cue sounds: the catalogue an app ships (`catalog.json` + audio, read from the app's `fs.FS`; actnowkit carries no audio), each event's choice (a catalogue sound, a macOS system sound, none), filters for a picker (group, tags, text, suggested uses), previews, and a low-latency player (AVAudioEngine on macOS). |
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
+| [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
 | [`cmd/actnow-conformance`](cmd/actnow-conformance) | Inspect a real family directory on a Mac: `check`, `discover`, `claims`, `lock`, `watch`, `pins`. |
 
 ## The protocol in brief
@@ -312,6 +314,49 @@ serves a file whose SHA-256 differs is left and the others race again
 `TextSourceAuto`, `TextSourceOfficial`, `TextSourceMirror` and
 `TextSourceNote` are the setting's reference wordings.
 
+### Cue sounds
+
+`sounds` plays the family's cue sounds and models their settings; the
+picker's UI is the app's. The sounds themselves are not in actnowkit: the
+family's library is a private repository (its audio comes from React Bits
+Sound Lab, licensed for use inside apps but not for redistribution on its
+own), and each app copies the sounds it offers into its bundle
+(`go run github.com/hehehai/actnowkit/cmd/actnow-sounds subset -from … -to
+resources/sounds -groups … -uses …`). A build without them (a source build
+of an open-source app) passes a nil catalogue and plays every event's
+`Fallback` system sound.
+
+```go
+cat, err := sounds.Load(resources, "sounds")   // nil and ErrNoCatalog when the build has none
+player := sounds.NewPlayer(cat, nil)            // nil: DefaultOutput (macOS: AVAudioEngine; elsewhere silent)
+
+var recordStart = sounds.Event{ID: "record.start", Name: sounds.Text{En: "Start recording", Zh: "开始录音"},
+	Default: "tally", Fallback: "Pop", Uses: []string{"record.start"}}
+
+prefs := sounds.DefaultPrefs()                  // {On: true, Volume: 70}: kept in the app's own settings
+player.Preload(prefs.Choice(recordStart))       // at start-up, off the main thread
+player.PlayEvent(recordStart, prefs)            // returns at once
+t := prefs.Target(cat, recordStart)             // what it plays; t.Length(cat) = how long it is heard
+
+// The picker
+f := sounds.Filter{Group: "notify", Tags: []string{"soft"}, Query: "bell"}
+rows := cat.Filter(f)                           // + cat.GroupCounts(f), cat.TagCounts(f, true) for the chips
+suggested := cat.Suggested(recordStart)         // its default, then the sounds of its uses
+player.Preview(row.ID, "", prefs.Volume)        // ▶: cuts off the last preview
+prefs.Choose(recordStart, row.ID)               // or sounds.None, or sounds.System("Glass")
+player.Preview(prefs.Choice(recordStart), recordStart.Fallback, prefs.Volume) // "Test"
+```
+
+A choice is `""` (the default), `"none"`, `"system:<name>"` or a sound id.
+Migrating an old setting that named a system sound: `MigrateSystem(ev,
+name, wasDefault)` gives users who never changed it the new default and
+keeps an explicit choice as `system:<name>`; `MigrateClosest(cat, name)`
+maps it to the sound that replaces it (`Sound.Replaces`). On macOS the
+catalogue's WAV files are decoded once (`DecodeWAV`) into an AVAudioEngine
+with 8 player nodes: a start takes microseconds and quick repeats overlap;
+the engine stops after 5 s without a sound. Other files use AVAudioPlayer,
+system sounds NSSound. Tests use `sounds.Recorder`.
+
 ### Log selection
 
 `listsel.Model[K]` is the selection behind every app's log view, so the
@@ -380,7 +425,8 @@ lists problems in the real family directory.
 
 ```sh
 go test -race ./...                          # Linux or macOS
-ACTNOWKIT_MAC=1 go test -race ./...          # macOS: also the real notify, LaunchServices, security, scutil
+ACTNOWKIT_MAC=1 go test -race ./...          # macOS: also the real notify, LaunchServices, security, scutil, audio (quiet)
+ACTNOW_SOUNDS_DIR=../actnow-sounds go test ./sounds   # check a real sound catalogue
 go vet ./... && staticcheck ./...
 ```
 
