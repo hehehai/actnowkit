@@ -65,6 +65,41 @@ type Prefs struct {
 // the user's own audio.
 const DefaultVolume = 70
 
+// VolumeSteps are the volumes a picker offers (its volume button's list,
+// loudest first in the pop-up).
+var VolumeSteps = []int{0, 25, 50, 75, 100}
+
+// NearestVolumeStep is the step of VolumeSteps closest to v (the one a
+// picker shows as chosen for a volume set before the steps).
+func NearestVolumeStep(v int) int {
+	best := VolumeSteps[0]
+	for _, s := range VolumeSteps {
+		if abs(s-v) < abs(best-v) {
+			best = s
+		}
+	}
+	return best
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// VolumeLevel is how a volume is drawn: 0 muted, 1 low (up to 50 %), 2
+// high.
+func VolumeLevel(v int) int {
+	switch {
+	case v <= 0:
+		return 0
+	case v <= 50:
+		return 1
+	}
+	return 2
+}
+
 // DefaultPrefs are a fresh install's prefs: on, at DefaultVolume, every
 // event on its default.
 func DefaultPrefs() Prefs { return Prefs{On: true, Volume: DefaultVolume} }

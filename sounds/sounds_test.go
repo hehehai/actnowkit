@@ -342,3 +342,48 @@ func TestDecodeWAV(t *testing.T) {
 		}
 	}
 }
+
+func TestPreviewingAndVolume(t *testing.T) {
+	c := load(t)
+	p := NewPlayer(c, &Recorder{})
+	now := time.Unix(100, 0)
+	p.SetClock(func() time.Time { return now })
+	if ch, _ := p.Previewing(); ch != "" {
+		t.Error("previewing before any preview")
+	}
+	p.Preview("chime", "", 50)
+	if ch, left := p.Previewing(); ch != "chime" || left != 1400*time.Millisecond {
+		t.Errorf("chime %q %v", ch, left)
+	}
+	now = now.Add(time.Second)
+	if ch, left := p.Previewing(); ch != "chime" || left != 400*time.Millisecond {
+		t.Errorf("later %q %v", ch, left)
+	}
+	now = now.Add(time.Second)
+	if ch, _ := p.Previewing(); ch != "" {
+		t.Errorf("ended %q", ch)
+	}
+	p.Preview(System("Glass"), "", 50) // not measured: UnknownLength
+	if ch, left := p.Previewing(); ch != "system:Glass" || left != UnknownLength {
+		t.Errorf("system %q %v", ch, left)
+	}
+	p.StopPreview()
+	if ch, _ := p.Previewing(); ch != "" {
+		t.Errorf("stopped %q", ch)
+	}
+	p.Preview(None, "", 50)
+	if ch, _ := p.Previewing(); ch != "" {
+		t.Errorf("none %q", ch)
+	}
+	for v, want := range map[int]int{0: 0, 10: 0, 13: 25, 70: 75, 62: 50, 100: 100, 140: 100} {
+		if got := NearestVolumeStep(v); got != want {
+			t.Errorf("NearestVolumeStep(%d) = %d, want %d", v, got, want)
+		}
+	}
+	if VolumeLevel(0) != 0 || VolumeLevel(25) != 1 || VolumeLevel(50) != 1 || VolumeLevel(75) != 2 {
+		t.Error("VolumeLevel")
+	}
+	if c.GroupName("notify", "zh") != "通知" || c.GroupName("nope", "en") != "nope" {
+		t.Error("GroupName")
+	}
+}

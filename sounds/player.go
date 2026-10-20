@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // Output plays sounds: the platform's (DefaultOutput: AVAudioPlayer and
@@ -36,6 +37,10 @@ type Player struct {
 	mu      sync.Mutex
 	loaded  map[string]bool
 	preview Voice
+	// previewing is the choice the last preview plays, until previewEnd.
+	previewing string
+	previewEnd time.Time
+	now        func() time.Time
 }
 
 // NewPlayer is a player of cat on out (nil: DefaultOutput()).
@@ -43,7 +48,7 @@ func NewPlayer(cat *Catalog, out Output) *Player {
 	if out == nil {
 		out = DefaultOutput()
 	}
-	return &Player{cat: cat, out: out, loaded: map[string]bool{}}
+	return &Player{cat: cat, out: out, loaded: map[string]bool{}, now: time.Now}
 }
 
 // Catalog is the player's catalogue (nil when the build has none).
@@ -118,9 +123,44 @@ func (p *Player) Preview(choice, fallback string, volume int) (Target, error) {
 	if v != nil {
 		p.mu.Lock()
 		p.preview = v
+		if t.Kind != KindNone && err == nil {
+			d := t.Length(p.cat)
+			if d <= 0 {
+				d = UnknownLength
+			}
+			p.previewing, p.previewEnd = choice, p.now().Add(d)
+		}
 		p.mu.Unlock()
 	}
 	return t, err
+}
+
+// UnknownLength is how long a preview of a sound of unknown length (a
+// system sound not measured) is taken to play.
+const UnknownLength = 800 * time.Millisecond
+
+// Previewing is the choice the last preview plays and how long it has
+// left; "" when none plays: a picker's ▶ shows its state (and redraws
+// after left).
+func (p *Player) Previewing() (choice string, left time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.previewing == "" {
+		return "", 0
+	}
+	left = p.previewEnd.Sub(p.now())
+	if left <= 0 {
+		p.previewing = ""
+		return "", 0
+	}
+	return p.previewing, left
+}
+
+// SetClock replaces the player's clock (tests of Previewing).
+func (p *Player) SetClock(now func() time.Time) {
+	p.mu.Lock()
+	p.now = now
+	p.mu.Unlock()
 }
 
 // StopPreview stops the last preview if it still plays.
@@ -128,6 +168,7 @@ func (p *Player) StopPreview() {
 	p.mu.Lock()
 	v := p.preview
 	p.preview = nil
+	p.previewing = ""
 	p.mu.Unlock()
 	if v != nil {
 		v.Stop()

@@ -168,6 +168,9 @@ func soundsExample(resources fs.FS, row sounds.Sound) {
 	suggested := cat.Suggested(recordStart)
 	_, _ = rows, suggested
 	player.Preview(row.ID, "", prefs.Volume)
+	ch, left := player.Previewing()
+	step := sounds.NearestVolumeStep(prefs.Volume)
+	_, _, _ = ch, left, step
 	prefs.Choose(recordStart, row.ID)
 	player.Preview(prefs.Choice(recordStart), recordStart.Fallback, prefs.Volume)
 }

@@ -238,6 +238,15 @@ func (c *Catalog) Group(id string) (Group, bool) {
 	return c.Groups[i], true
 }
 
+// GroupName is the group's name in lang (the id for a group the catalogue
+// does not describe).
+func (c *Catalog) GroupName(id, lang string) string {
+	if g, ok := c.Group(id); ok {
+		return g.Name.In(lang)
+	}
+	return id
+}
+
 // TagName is the tag's name in lang (the id itself for a tag the
 // catalogue does not describe).
 func (c *Catalog) TagName(id, lang string) string {

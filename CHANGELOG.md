@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.9.1 — 2026-10-20
+
+- `sounds`: for the pickers' second look: `Player.Previewing` (the choice
+  the last preview plays and how long it has left; `StopPreview` ends it),
+  `UnknownLength`, `Player.SetClock`; `VolumeSteps` (0, 25, 50, 75, 100),
+  `NearestVolumeStep`, `VolumeLevel` (muted, low, high: the volume
+  button's icon); `Catalog.GroupName`.
+
 ## v0.9.0 — 2026-10-20
 
 - New package `sounds`: the family's cue sounds. `Load` reads an app's

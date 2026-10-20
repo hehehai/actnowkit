@@ -343,6 +343,8 @@ f := sounds.Filter{Group: "notify", Tags: []string{"soft"}, Query: "bell"}
 rows := cat.Filter(f)                           // + cat.GroupCounts(f), cat.TagCounts(f, true) for the chips
 suggested := cat.Suggested(recordStart)         // its default, then the sounds of its uses
 player.Preview(row.ID, "", prefs.Volume)        // ▶: cuts off the last preview
+ch, left := player.Previewing()                 // ▶ in the accent on ch, redraw after left; StopPreview stops it
+step := sounds.NearestVolumeStep(prefs.Volume)  // the volume menu's checked step (VolumeSteps), VolumeLevel its icon
 prefs.Choose(recordStart, row.ID)               // or sounds.None, or sounds.System("Glass")
 player.Preview(prefs.Choice(recordStart), recordStart.Fallback, prefs.Volume) // "Test"
 ```
