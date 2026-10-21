@@ -48,6 +48,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`licence`](licence) | The app's licence on this Mac, against actnow.dev ([docs/licensing.md](https://github.com/hehehai/actnow-www/blob/main/docs/licensing.md) of the site): activation with a code, Ed25519 tokens bound to the Mac's device ID (IOPlatformUUID + the app's salt, hashed) and verified offline with the embedded `ProductionKeys`, the app's own Keychain item, refresh every 7 days, 30 days offline, clock-rollback detection, early-access (whitelist) codes stopping at `paid_since`, the device limit, the account page for removing a Mac, the app's own code-signature check (Team ID 779M533DL5), texts. |
 | [`updates`](updates) | In-app updates on MyGo's updater API without MyGo's window: the state machine (checking, available, downloading with progress, ready to restart, failed), release notes in the app's language from actnow.dev's changelog API (English where a release has none), the history for Settings → About, automatic checks, and the "needs a paid licence" warning for early-access users. |
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
+| [`activity`](activity) | The activity cards at the sidebar's foot (the family's window spec §2): jobs grouped by kind with "done/total", a kind's finished card for 3 s, the stack's geometry (closed: the first card and two peeking under it; open: a list of four). No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
 | [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
 | [`cmd/actnow-conformance`](cmd/actnow-conformance) | Inspect a real family directory on a Mac: `check`, `discover`, `claims`, `lock`, `watch`, `pins`. |
@@ -401,6 +402,37 @@ sel.Clear()                            // copying clears the selection
 wordings (English and Chinese) for the apps' catalogues. The family's
 interaction spec (header, context menu, colours, tests) is VoxtNew's
 reference implementation.
+
+### Activity cards
+
+`activity.Tracker` turns the app's unfinished jobs into the cards at the
+foot of the sidebar, the same way in every app; the app adds its own cards
+around them (a stopped engine first, then what the user started — a
+recording, a project being made —, then these, then downloads), words
+them and draws them.
+
+```go
+var tr activity.Tracker                 // with the window's state
+
+// a job ended (jobs.Updated):
+tr.Ended(j.Kind, kindTitleOr(j), j.State == jobs.StateSucceeded)
+
+// each build:
+cards := tr.Cards(now, unfinished, kindTitle) // kindTitle("render.export") = "Exporting", "" none
+for _, c := range cards {
+	switch {
+	case c.Finished: // "%s done", "%d items" (c.Done); it goes after 3 s
+	case c.Total > 1: // "2/5" (c.Done, c.Total), c.Frac
+	case c.Waiting: // "Waiting"
+	default: // c.Frac: 0–1, or -1 going on
+	}
+}
+if activity.Showing(cards) { c.After(time.Second) }
+
+// the stack: activity.Height(n, open), activity.Poses(n, open) (Top, Y,
+// Scale, Fade of each card drawn, the first last so it is on top),
+// activity.CardHeight, CardGap, CardPeek, Show.
+```
 
 ### Licences (paid apps)
 

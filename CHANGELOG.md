@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.12.0 — 2026-10-21
+
+The activity cards of the family's window layout (as Act's): nothing else
+changed, so code written for v0.11 builds and behaves as before.
+
+- New package `activity`: `Tracker` (`Ended`, `Cards`) groups an app's
+  unfinished jobs by kind into cards — a single job with its title and
+  fraction (or waiting), several with the kind's title and done/total,
+  counting the jobs of the kind that ended while others ran —, and keeps a
+  kind's finished card for `DoneFor` (3 s) when some of its jobs succeeded;
+  `Showing`; the stack's geometry (`CardHeight` 44, `CardGap` 6,
+  `CardPeek` 5, two cards behind, `Show` 4, `Height`, `Poses`). No UI:
+  each app draws the cards, in its words and look. Taken from Act's and
+  CaptionCraft's, Dicta's cards.
+
 ## v0.11.0 — 2026-10-20
 
 Inboxly joins the family, with the capability and pins it uses; nothing
