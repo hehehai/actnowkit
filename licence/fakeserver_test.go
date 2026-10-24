@@ -31,6 +31,9 @@ type fakeServer struct {
 	wrongNonce  bool
 	wrongDevice bool
 	requests    []string
+	trialOff    bool // answer 403 trial_unavailable
+	// trials: the first launch the server knows, per app and device.
+	trials map[string]time.Time
 }
 
 type fakeCode struct {
@@ -155,6 +158,41 @@ func (f *fakeServer) handle(w http.ResponseWriter, r *http.Request) {
 			c.names = append(c.names, name)
 		}
 		_ = json.NewEncoder(w).Encode(f.issue(c, str("app"), id, str("version"), str("nonce")))
+	case "/api/licence/v1/trial":
+		if f.trialOff {
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "trial_unavailable", "message": "off"})
+			return
+		}
+		key := str("app") + "|" + str("dev")
+		start, ok := f.trials[key]
+		if !ok {
+			start = f.now
+			if s, err := time.Parse(time.RFC3339, str("startedAt")); err == nil {
+				start = s
+			}
+			if f.trials == nil {
+				f.trials = map[string]time.Time{}
+			}
+			f.trials[key] = start
+		}
+		ends := start.Add(15 * 24 * time.Hour)
+		if !f.now.Before(ends) {
+			w.WriteHeader(http.StatusForbidden)
+			details := map[string]any{"startedAt": start.Format(time.RFC3339), "endsAt": ends.Format(time.RFC3339)}
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "trial_expired", "message": "trial_expired", "details": details})
+			return
+		}
+		iat := f.now.Unix()
+		body := map[string]any{
+			"v": 1, "cid": key, "aid": key, "prd": str("app"), "app": str("app"), "ed": "trial", "dev": str("dev"), "ver": str("version"),
+			"ps": nil, "iat": iat, "rfa": iat + 7*86400, "exp": ends.Unix(), "lexp": ends.Unix(), "md": 0,
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"token":      f.sign(body),
+			"trial":      map[string]any{"app": str("app"), "startedAt": start.Format(time.RFC3339), "endsAt": ends.Format(time.RFC3339)},
+			"serverTime": f.now.Format(time.RFC3339),
+		})
 	case "/api/licence/v1/refresh", "/api/licence/v1/status":
 		tok, err := ParseToken(str("token"), f.keys())
 		if err != nil {

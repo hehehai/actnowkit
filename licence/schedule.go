@@ -37,13 +37,13 @@ func (c *Client) Run(ctx context.Context, onChange func(Status)) (wake func()) {
 			}
 			last = &st
 			wait := CheckEvery
-			if st.LastError != "" && (st.State == Grace || st.State == NeedsRefresh) {
+			if st.LastError != "" && (st.State == Grace || st.State == NeedsRefresh) || st.State == TrialLocal {
 				wait = RetryAfter[min(failures, len(RetryAfter)-1)]
 				failures++
 			} else {
 				failures = 0
 				// Wake up when the token becomes due, if that is sooner.
-				if st.State == Valid {
+				if st.State == Valid || st.State == TrialValid {
 					if d := st.RefreshAfter.Sub(c.cfg.Now()); d > 0 && d < wait {
 						wait = d + time.Minute
 					}

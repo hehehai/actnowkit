@@ -99,7 +99,7 @@ func ParseToken(raw string, keys map[string]ed25519.PublicKey) (*Token, error) {
 		return nil, ErrTokenFormat
 	}
 	var t Token
-	if err := json.Unmarshal(body, &t); err != nil || t.V != 1 || t.CodeID == "" {
+	if err := json.Unmarshal(body, &t); err != nil || t.V != 1 || (t.CodeID == "" && t.Edition != EditionTrial) {
 		return nil, ErrTokenFormat
 	}
 	t.KeyID = parts[1]

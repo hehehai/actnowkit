@@ -51,6 +51,9 @@ type Config struct {
 	DeviceID func() (string, error)
 	// Device: ThisDevice.
 	Device func() DeviceInfo
+	// TrialStore keeps the trial record (first launch); nil: the Keychain
+	// item "actnow.trial" of the app (NewKeychainTrialStore).
+	TrialStore TrialStore
 }
 
 // Client checks, activates and refreshes the licence of one app on this
@@ -58,6 +61,8 @@ type Config struct {
 type Client struct {
 	cfg Config
 	mu  sync.Mutex
+	// trialUnavailable: the site answered trial_unavailable in this run.
+	trialUnavailable bool
 }
 
 // New checks the config and fills in the defaults.
@@ -91,6 +96,9 @@ func New(cfg Config) (*Client, error) {
 	}
 	if cfg.Device == nil {
 		cfg.Device = ThisDevice
+	}
+	if cfg.TrialStore == nil {
+		cfg.TrialStore = NewKeychainTrialStore(cfg.App)
 	}
 	return &Client{cfg: cfg}, nil
 }
@@ -129,32 +137,76 @@ func (c *Client) Status() Status {
 	return c.statusLocked()
 }
 
+// statusLocked decides the state. A stored code decides alone: valid →
+// licensed; otherwise its own state (expired, revoked, removed…), with no
+// trial, so a refused code cannot reopen one. With no code stored, the trial
+// applies: its token, else the Mac's own record while it is within 15 days.
 func (c *Client) statusLocked() Status {
 	rec, err := c.cfg.Store.Load()
 	if err != nil {
-		return Status{State: Inactive, ManageURL: c.ManageURL("")}
+		rec = Record{}
 	}
 	device, err := c.cfg.DeviceID()
 	if err != nil {
-		return Status{State: Inactive, Reason: ReasonInvalid, LastError: err.Error()}
+		return Status{State: Inactive, Reason: ReasonInvalid, LastError: err.Error(), ManageURL: c.ManageURL("")}
 	}
-	st, update := evaluate(evalInput{
+	now := c.cfg.Now()
+	in := evalInput{
 		Record:    rec,
 		Keys:      c.cfg.Keys,
 		App:       c.cfg.App,
 		Device:    device,
 		Version:   c.cfg.Version,
 		PaidSince: c.cfg.PaidSince,
-		Now:       c.cfg.Now(),
-	})
-	if update != nil {
-		_ = c.cfg.Store.Save(*update)
+		Now:       now,
 	}
-	if st.Token != nil {
-		st.ManageURL = c.ManageURL(st.Token.CodeID)
-	} else {
-		st.ManageURL = c.ManageURL("")
+	tr, trChanged := c.trialRecordLocked(now)
+	if trChanged {
+		_ = c.cfg.TrialStore.SaveTrial(tr)
 	}
+
+	trialTok := rec.Token != "" && isTrialRaw(rec.Token, c.cfg.Keys)
+	if rec.Token != "" && !trialTok {
+		st, update := evaluate(in)
+		if update != nil {
+			_ = c.cfg.Store.Save(*update)
+		}
+		if st.Token != nil {
+			st.ManageURL = c.ManageURL(st.Token.CodeID)
+		} else {
+			st.ManageURL = c.ManageURL("")
+		}
+		return st
+	}
+
+	// The trial: its token (evaluated like a code's, now* included), else
+	// the Mac's record.
+	var st Status
+	fromToken := false
+	if trialTok {
+		var update *Record
+		var ev Status
+		ev, update = evaluate(in)
+		switch ev.State {
+		case Valid, NeedsRefresh, Grace, Expired:
+			st = trialFromToken(ev, tr.StartedAt)
+			fromToken = true
+		}
+		if update != nil {
+			_ = c.cfg.Store.Save(*update)
+		}
+	}
+	if !fromToken {
+		var changed bool
+		st, changed = localTrial(&tr, rec.Offset, now)
+		if changed {
+			_ = c.cfg.TrialStore.SaveTrial(tr)
+		}
+		if c.trialUnavailable && st.State != TrialExpired {
+			st = Status{State: TrialExpired, Reason: ReasonTrialUnavailable, TrialStartedAt: st.TrialStartedAt, TrialEndsAt: st.TrialEndsAt}
+		}
+	}
+	st.ManageURL = c.ManageURL("")
 	return st
 }
 
@@ -164,6 +216,8 @@ type APIError struct {
 	Code       string
 	Message    string
 	Details    json.RawMessage
+	// Data: the answer's "data" (trial_expired carries startedAt and endsAt).
+	Data json.RawMessage
 }
 
 func (e *APIError) Error() string {
@@ -182,11 +236,16 @@ type tokenAnswer struct {
 }
 
 func (c *Client) post(ctx context.Context, endpoint string, body any, out any) error {
+	return c.postPath(ctx, "/api/licence/v1/"+endpoint, body, out)
+}
+
+// postPath posts JSON to a path of the site.
+func (c *Client) postPath(ctx context.Context, path string, body any, out any) error {
 	b, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.BaseURL+"/api/licence/v1/"+endpoint, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.BaseURL+path, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -209,11 +268,12 @@ func (c *Client) post(ctx context.Context, endpoint string, body any, out any) e
 			Error   string          `json:"error"`
 			Message string          `json:"message"`
 			Details json.RawMessage `json:"details"`
+			Data    json.RawMessage `json:"data"`
 		}
 		if json.Unmarshal(data, &e) != nil || e.Error == "" {
 			return fmt.Errorf("%w: %s", ErrNetwork, resp.Status)
 		}
-		return &APIError{HTTPStatus: resp.StatusCode, Code: e.Error, Message: e.Message, Details: e.Details}
+		return &APIError{HTTPStatus: resp.StatusCode, Code: e.Error, Message: e.Message, Details: e.Details, Data: e.Data}
 	}
 	if err := json.Unmarshal(data, out); err != nil {
 		return fmt.Errorf("%w: bad answer: %v", ErrNetwork, err)
@@ -302,8 +362,9 @@ func (c *Client) Refresh(ctx context.Context) (Status, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	rec, err := c.cfg.Store.Load()
-	if err != nil || rec.Token == "" {
-		return Status{State: Inactive, ManageURL: c.ManageURL("")}, nil
+	if err != nil || rec.Token == "" || isTrialRaw(rec.Token, c.cfg.Keys) {
+		// No code to refresh: a trial token is renewed by StartTrial.
+		return c.statusLocked(), nil
 	}
 	device, err := c.cfg.DeviceID()
 	if err != nil {
@@ -355,9 +416,14 @@ func (c *Client) Refresh(ctx context.Context) (Status, error) {
 }
 
 // Check is what an app calls at launch and from the scheduler: the stored
-// state, refreshed online when it is due or must be confirmed.
+// state, refreshed online when it is due or must be confirmed. A trial
+// (no code) is confirmed with the site by StartTrial when it is wanted.
 func (c *Client) Check(ctx context.Context) Status {
 	st := c.Status()
+	if st.needsTrialCall() {
+		next, _ := c.StartTrial(ctx) // a failure is in next (trial_local, grace)
+		return next
+	}
 	switch st.State {
 	case NeedsRefresh, Grace:
 	case Expired:
@@ -393,7 +459,7 @@ type LicenceInfo struct {
 // page: Macs in use). No new token.
 func (c *Client) ServerStatus(ctx context.Context) (*LicenceInfo, error) {
 	rec, err := c.cfg.Store.Load()
-	if err != nil || rec.Token == "" {
+	if err != nil || rec.Token == "" || isTrialRaw(rec.Token, c.cfg.Keys) {
 		return nil, ErrNoRecord
 	}
 	device, err := c.cfg.DeviceID()

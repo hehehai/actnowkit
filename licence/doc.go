@@ -19,6 +19,15 @@
 //	wake := lic.Run(ctx, func(st licence.Status) { /* update the UI */ })
 //	st, err := lic.Activate(ctx, code) // from the activation page
 //
+// Without a code, the app has a free trial of 15 days per Mac, counted from
+// its first launch (no code needed; the start is kept in the Keychain item
+// "actnow.trial"/<app slug>, so it survives reinstalls). Online, StartTrial
+// (called by Check) takes the site's trial token; offline, the Mac's own
+// record decides. A valid code always wins. Trial states: trial_valid (a
+// trial token), trial_local (offline, within 15 days), trial_expired (over,
+// or a code was refused: then the code's own state, with no trial). Use
+// Status.IsTrial and Status.Licensed to show them.
+//
 // Removing a Mac happens on the site only (ManageURL). VerifySelf checks
 // the app's own code signature (Team ID 779M533DL5) in release builds.
 //

@@ -21,13 +21,14 @@ type harness struct {
 	t      *testing.T
 	server *fakeServer
 	store  *MemoryStore
+	trials TrialStore
 	now    time.Time
 	device string
 	client *Client
 }
 
 func newHarness(t *testing.T, version string) *harness {
-	h := &harness{t: t, server: newFakeServer(t), store: &MemoryStore{}}
+	h := &harness{t: t, server: newFakeServer(t), store: &MemoryStore{}, trials: &MemoryTrialStore{}}
 	h.now = h.server.now
 	h.device = DeviceIDFromUUID("6C1A5C38-1D0B-5E3A-9F55-0A1B2C3D4E5F", testSalt)
 	h.client = h.newClient(version)
@@ -41,6 +42,7 @@ func (h *harness) newClient(version string) *Client {
 		DeviceSalt: testSalt,
 		Keys:       h.server.keys(),
 		Store:      h.store,
+		TrialStore: h.trials,
 		BaseURL:    h.server.srv.URL,
 		Now:        func() time.Time { return h.now },
 		DeviceID:   func() (string, error) { return h.device, nil },
@@ -349,7 +351,8 @@ func TestServerStatusAndForget(t *testing.T) {
 	if err := h.client.Forget(); err != nil {
 		t.Fatal(err)
 	}
-	expectState(t, h.client.Status(), Inactive, "", false)
+	// No code any more: the trial of this Mac applies (it started at the first check).
+	expectState(t, h.client.Status(), TrialLocal, ReasonUnconfirmed, true)
 	if h.client.EarlyAccessURL() != h.server.srv.URL+"/account/early-access?app=captioncraft" {
 		t.Fatal(h.client.EarlyAccessURL())
 	}

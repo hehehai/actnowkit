@@ -77,6 +77,10 @@ type Status struct {
 	ManageURL string
 	// LastError: the last refresh's error, if it failed.
 	LastError string
+	// TrialStartedAt and TrialEndsAt: the trial's first launch and its end
+	// (trial states only; TrialEndsAt is the token's lexp when there is one).
+	TrialStartedAt time.Time
+	TrialEndsAt    time.Time
 }
 
 // Edition of the licence ("" when there is none).

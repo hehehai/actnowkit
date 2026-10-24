@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+A 15-day free trial for the apps that sell a licence, per app and per Mac,
+counted from the first launch and needing no code. Nothing else changed; the
+code's states and API behave as before (the trial states are new values).
+
+- `licence`: `StartTrial(ctx)` asks the site for the Mac's trial token
+  (`POST /api/licence/v1/trial`, `{app, dev, version, startedAt}`), called by
+  `Check` while a trial is wanted. The trial token is stored like a code's
+  (same offline grace, same clock rules), but never sent to the code's
+  refresh, deactivate or status endpoints.
+- New states `TrialValid` (`trial_valid`: a trial token; reasons `""`, `due`,
+  `offline`, `clock`), `TrialLocal` (`trial_local`: offline, the Mac's record
+  is within 15 days; reason `unconfirmed`), `TrialExpired` (`trial_expired`:
+  the end reached, or the server answered `trial_expired`; reason
+  `trial_ended`; or `trial_unavailable` for this run). `Status.IsTrial()`,
+  `Status.Licensed()`, `Status.TrialStartedAt`, `Status.TrialEndsAt`.
+- Priority: a stored code decides alone (licensed, or its own state such as
+  expired, revoked or removed, without a trial); with no code, the trial
+  applies. A trial over with no code is `trial_expired`; the data stays.
+- The Mac's trial record (first launch, latest time seen, the server's
+  end) is kept in the Keychain as `actnow.trial`/<app slug>
+  (`NewKeychainTrialStore`, `Config.TrialStore`); time uses the protocol's
+  now* rule, so turning the clock back does not extend the trial.
+- `APIError.Data` carries the answer's `data` (trial_expired's startedAt
+  and endsAt).
+
 ## v0.19.0 — 2026-11-16
 
 A fix: `redact` no longer crashes the app on a URL that does not parse.
