@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.12.1 — 2026-10-26
+
+What a model download takes from an endpoint is checked against the
+catalogue (Act's review #108 HUB-M1): a racing mirror can no longer change
+a pinned model's files.
+
+- hfhub: an entry pinned to a commit takes only an endpoint that answers
+  that commit; one that answers another (out of date, or serving its own)
+  fails and the others are asked — no snapshot of the other commit, no
+  refs/main moved to it.
+- hfhub: a file of `Entry.Files` with a `SHA256` is checked against it
+  whether it is in LFS or in git (configs, chat templates, tokenizers,
+  vocabularies), not only against the blob id the endpoint lists; a blob
+  of such a file already in the cache that does not match is fetched
+  again. Catalogues can now pin every file (before, a pin on a git file
+  failed as a mismatch with the endpoint's empty LFS hash).
+
 ## v0.12.0 — 2026-10-21
 
 The activity cards of the family's window layout (as Act's): nothing else

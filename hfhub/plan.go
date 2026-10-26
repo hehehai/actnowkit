@@ -53,9 +53,10 @@ func (c *Client) plan(ctx context.Context, e Entry) (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !isCommit(info.SHA) {
+	if !isCommit(info.SHA) || isCommit(rev) && !strings.EqualFold(info.SHA, rev) {
 		return nil, fmt.Errorf("%s: %s sent a bad commit %q", e.Repo, ep, info.SHA)
 	}
+	info.SHA = strings.ToLower(info.SHA)
 	p := &plan{entry: e, repo: e.Repo, rev: rev, commit: info.SHA, ep: ep}
 	p.Revision, p.Endpoint, p.Gated = info.SHA, ep, info.gated()
 	restrict := len(e.Files) > 0
@@ -75,8 +76,16 @@ func (c *Client) plan(ctx context.Context, e Entry) (*plan, error) {
 			if !ok {
 				continue
 			}
-			if w.SHA256 != "" && !strings.EqualFold(w.SHA256, f.SHA256) {
+			switch {
+			case w.SHA256 == "":
+			case f.lfs && !strings.EqualFold(w.SHA256, f.SHA256):
 				return nil, fmt.Errorf("%s/%s: the catalogue pins sha256 %s, %s lists %s: %w", e.Repo, s.Path, w.SHA256, ep, f.SHA256, ErrChecksum)
+			case !f.lfs:
+				// A file kept in git: its content is checked against the
+				// catalogue's sha256, not only the blob id the endpoint
+				// gives (a mirror could serve a config, a chat template
+				// or a tokenizer of its own with its own blob id).
+				f.SHA256 = strings.ToLower(w.SHA256)
 			}
 			delete(want, s.Path)
 		}

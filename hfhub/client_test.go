@@ -37,6 +37,8 @@ type fakeHub struct {
 	files map[string][]byte
 	lfs   map[string]bool
 	gated bool
+	// commit is the commit the API answers for any revision ("": testCommit).
+	commit string
 	// Faults.
 	apiDelay atomic.Int64 // ns
 	apiFail  atomic.Bool
@@ -175,7 +177,11 @@ func (h *fakeHub) serve(w http.ResponseWriter, r *http.Request) {
 		if h.gated {
 			gated = "manual"
 		}
-		json.NewEncoder(w).Encode(map[string]any{"id": h.repo, "sha": testCommit, "gated": gated, "siblings": sibs})
+		commit := testCommit
+		if h.commit != "" {
+			commit = h.commit
+		}
+		json.NewEncoder(w).Encode(map[string]any{"id": h.repo, "sha": commit, "gated": gated, "siblings": sibs})
 	case strings.HasPrefix(p, "/"+h.repo+"/resolve/"+testCommit+"/"):
 		if h.gated && !authed {
 			http.Error(w, "gated", http.StatusUnauthorized)
@@ -677,6 +683,73 @@ func TestMirrorRace(t *testing.T) {
 	official.apiFail.Store(true)
 	if _, err := c.Plan(context.Background(), official.entry()); !errors.Is(err, ErrOffline) {
 		t.Errorf("all down: %v", err)
+	}
+}
+
+// A pinned revision is only taken from an endpoint that answers it: a
+// faster mirror that answers another commit is passed over (its snapshot
+// and refs/main never written).
+func TestMirrorAnotherCommit(t *testing.T) {
+	official := newFakeHub(t)
+	mirror := newFakeHub(t)
+	mirror.commit = strings.Repeat("b", 40)
+	mirror.files["config.json"] = []byte(`{"model_type":"evil"}`)
+	official.apiDelay.Store(int64(200 * time.Millisecond))
+	c := official.client(t, func(o *Options) { o.Endpoints = []string{mirror.srv.URL, official.srv.URL} })
+	e := official.entry()
+	e.Revision = testCommit
+	var last Progress
+	if err := c.Download(context.Background(), e, func(p Progress) { last = p }); err != nil {
+		t.Fatal(err)
+	}
+	if last.Mirror != official.srv.URL || mirror.count("served") != 0 {
+		t.Errorf("used %s (mirror served %d)", last.Mirror, mirror.count("served"))
+	}
+	repo := RepoDir(c.opts.CacheDir, testRepo)
+	if ref, _ := os.ReadFile(filepath.Join(repo, "refs", "main")); string(ref) != testCommit {
+		t.Errorf("refs/main %q", ref)
+	}
+	if _, err := os.Stat(filepath.Join(repo, "snapshots", mirror.commit)); err == nil {
+		t.Error("the mirror's commit has a snapshot")
+	}
+	// Only the mirror up: the pinned revision is not there.
+	official.apiFail.Store(true)
+	c2 := official.client(t, func(o *Options) { o.Endpoints = []string{mirror.srv.URL, official.srv.URL} })
+	if err := c2.Download(context.Background(), e, nil); err == nil {
+		t.Error("downloaded another commit")
+	}
+}
+
+// A file kept in git (not LFS) with a sha256 in the catalogue is checked
+// against it: an endpoint at the right commit that serves another config
+// (and lists that config's blob id) fails; a bad blob already in the cache
+// is fetched again.
+func TestPinnedGitFile(t *testing.T) {
+	h := newFakeHub(t)
+	c := h.client(t, nil)
+	good := h.files["config.json"]
+	e := h.entry()
+	e.Revision = testCommit
+	e.Files = []File{{Path: "config.json", SHA256: sha(good)}, {Path: "model.safetensors", SHA256: sha(h.files["model.safetensors"])}}
+	h.mu.Lock()
+	h.files["config.json"] = []byte(`{"model_type":"evi"}`) // same size, its own blob id
+	h.mu.Unlock()
+	if err := c.Download(context.Background(), e, nil); !errors.Is(err, ErrChecksum) {
+		t.Fatalf("a changed config: %v", err)
+	}
+	// The bad one left in the cache as a complete blob (another tool's)…
+	bad := h.files["config.json"]
+	os.MkdirAll(filepath.Join(RepoDir(c.opts.CacheDir, testRepo), "blobs"), 0o755)
+	os.WriteFile(c.blobPath(testRepo, gitBlobID(good)), bad, 0o644)
+	h.mu.Lock()
+	h.files["config.json"] = good
+	h.mu.Unlock()
+	if err := c.Download(context.Background(), e, nil); err != nil {
+		t.Fatal(err)
+	}
+	l, _ := c.Status(context.Background(), e)
+	if b, _ := os.ReadFile(filepath.Join(l.Snapshot, "config.json")); string(b) != string(good) {
+		t.Errorf("config %q", b)
 	}
 }
 

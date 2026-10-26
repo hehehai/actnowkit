@@ -240,6 +240,13 @@ func (c *Client) fetchBlobs(ctx context.Context, p *plan, progress func(Progress
 		}
 		seen[f.blob] = true
 		if complete(c.blobPath(p.repo, f.blob), f.Size) {
+			if !f.lfs && f.SHA256 != "" { // a small file kept in git: its content is checked (plan.go)
+				if ok, err := checkBlob(ctx, c.blobPath(p.repo, f.blob), f); err == nil && !ok {
+					os.Remove(c.blobPath(p.repo, f.blob))
+					todo = append(todo, f)
+					continue
+				}
+			}
 			done.Add(f.Size)
 			continue
 		}

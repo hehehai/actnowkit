@@ -98,6 +98,12 @@ func (c *Client) fetchInfo(ctx context.Context, ep, repo, rev, token string) (*r
 	if info.SHA == "" {
 		return nil, fmt.Errorf("%s: %s sent no commit", repo, ep)
 	}
+	// A pinned commit is the one served: an endpoint that answers another
+	// (a mirror out of date, or one that changes what it serves) fails,
+	// and the others are asked.
+	if isCommit(rev) && !strings.EqualFold(info.SHA, rev) {
+		return nil, fmt.Errorf("%s: %s answered commit %s for %s", repo, ep, info.SHA, rev)
+	}
 	return &info, nil
 }
 
