@@ -439,6 +439,45 @@ func TestDeleteForAllApps(t *testing.T) {
 	}
 }
 
+// TestRenamedApp: Act became Refto (v0.13.0) with a new bundle id and no
+// migration. Claims an old Act build wrote (dev.hehehai.act, no longer in
+// the family table) keep protecting its models while it is installed or
+// unknown, and once it is uninstalled they are orphans whose cleanup
+// keeps what an installed app (Refto) claims.
+func TestRenamedApp(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	me := e.store("dev.hehehai.dicta")
+	refto := e.store("dev.hehehai.refto")
+	old := &Store{Family: e.fam, Hub: e.hub, BundleID: "dev.hehehai.act", AppID: "act", Apps: func() map[string]AppState { return e.apps }}
+	snap(t, e.hub, repoA, revA, asrFiles())
+	snap(t, e.hub, repoB, revB, map[string]string{"model.safetensors": "gemma"})
+	if err := old.Claim(ctx, Claim{Repo: repoA, Revision: revA}, Claim{Repo: repoB, Revision: revB}); err != nil {
+		t.Fatal(err)
+	}
+	refto.Claim(ctx, Claim{Repo: repoA, Revision: revA})
+	// Unknown to the registry (no manifest, not in the table): kept.
+	if d, _ := me.Decide(Ref{repoB, revB}); !d.InUse() || len(d.Users) != 1 || d.Users[0].Name != "dev.hehehai.act" {
+		t.Fatalf("unknown: %+v", d)
+	}
+	// Installed, from its manifest: a user named as the manifest says.
+	e.apps[old.BundleID] = AppState{BundleID: old.BundleID, Name: "Act", Installed: true}
+	if d, _ := me.Decide(Ref{repoB, revB}); !d.InUse() || len(d.Users) != 1 || d.Users[0].Name != "Act" {
+		t.Fatalf("installed: %+v", d)
+	}
+	// Uninstalled: an orphan; cleaning it up keeps Refto's model.
+	e.apps[old.BundleID] = AppState{BundleID: old.BundleID, Name: "Act", Installed: false}
+	if _, err := me.CleanOrphans(ctx, old.BundleID); err != nil {
+		t.Fatal(err)
+	}
+	if Check(e.hub, Claim{Repo: repoA, Revision: revA}).State != Installed {
+		t.Error("Refto's model deleted")
+	}
+	if _, err := os.Stat(RepoDir(e.hub, repoB)); !os.IsNotExist(err) {
+		t.Error("orphan model kept")
+	}
+}
+
 func TestOrphans(t *testing.T) {
 	e := newEnv(t)
 	ctx := context.Background()
@@ -560,16 +599,16 @@ func TestPins(t *testing.T) {
 	if len(PinsOfFamily("qwen3-asr")) < 2 || len(PinsOfApp("dicta")) < 9 {
 		t.Error("pin queries")
 	}
-	// Act's catalogue: EmbeddingGemma 2 (its own pin, role embed) and four
+	// Refto's (was Act's) catalogue: EmbeddingGemma 2 (its own pin, role embed) and four
 	// models it shares with Dicta, AudioSmith and VoxtNew (the forced
 	// aligner since v0.7.2).
 	if p, ok := PinOf("mlx-community/embeddinggemma-2-8bit"); !ok || p.Role != RoleEmbed || p.Family != "embeddinggemma2" {
 		t.Errorf("embeddinggemma pin %+v", p)
 	}
-	if len(PinsOfApp("act")) != 5 {
-		t.Errorf("act pins: %d", len(PinsOfApp("act")))
+	if len(PinsOfApp("refto")) != 5 || len(PinsOfApp("act")) != 0 {
+		t.Errorf("refto pins: %d, act pins: %d", len(PinsOfApp("refto")), len(PinsOfApp("act")))
 	}
-	// Inboxly's catalogue: EmbeddingGemma 2 and Qwen3.5 2B with Act, Qwen3
+	// Inboxly's catalogue: EmbeddingGemma 2 and Qwen3.5 2B with Refto, Qwen3
 	// 4B with AudioSmith and Dicta.
 	if len(PinsOfApp("inboxly")) != 3 {
 		t.Errorf("inboxly pins: %d", len(PinsOfApp("inboxly")))

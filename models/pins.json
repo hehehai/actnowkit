@@ -9,7 +9,7 @@
       "quant": "4bit",
       "role": "asr",
       "bytes": 712781279,
-      "apps": ["audiosmith", "dicta", "voxtnew", "act"]
+      "apps": ["audiosmith", "dicta", "voxtnew", "refto"]
     },
     {
       "repo": "mlx-community/Qwen3-ASR-1.7B-8bit",
@@ -46,7 +46,7 @@
       "quant": "4bit",
       "role": "align",
       "bytes": 975857419,
-      "apps": ["audiosmith", "dicta", "act"]
+      "apps": ["audiosmith", "dicta", "refto"]
     },
     {
       "repo": "mlx-community/silero-vad",
@@ -98,7 +98,7 @@
       "quant": "4bit",
       "role": "llm",
       "bytes": 5179239349,
-      "apps": ["dicta", "act"],
+      "apps": ["dicta", "refto"],
       "note": "Dicta's default LLM; AudioSmith removed it from its catalogue and must not clean it up while Dicta claims it."
     },
     {
@@ -124,7 +124,7 @@
       "family": "qwen3.5",
       "quant": "4bit",
       "role": "llm",
-      "apps": ["voxtnew", "act", "inboxly"]
+      "apps": ["voxtnew", "refto", "inboxly"]
     },
     {
       "repo": "tencent/Hy-MT2-1.8B-GGUF",
@@ -151,8 +151,8 @@
       "quant": "8bit",
       "role": "embed",
       "bytes": 1266419318,
-      "apps": ["act", "inboxly"],
-      "note": "Act's search by meaning; another app adding semantic search can reuse it without a download."
+      "apps": ["refto", "inboxly"],
+      "note": "Refto's search by meaning; another app adding semantic search can reuse it without a download."
     }
   ]
 }

@@ -102,18 +102,18 @@ func TestUnclaimedAndHeal(t *testing.T) {
 		t.Fatalf("after heal %+v", d)
 	}
 	// An app with no models writes an empty file: not "lost".
-	act := e.store("dev.hehehai.act")
-	s := e.apps["dev.hehehai.act"]
+	act := e.store("dev.hehehai.refto")
+	s := e.apps["dev.hehehai.refto"]
 	s.ModelsRoot = e.hub
-	e.apps["dev.hehehai.act"] = s
+	e.apps["dev.hehehai.refto"] = s
 	if d, _ := as.Decide(Ref{repoA, revA}); !d.Unsure {
-		t.Fatal("act without claims file should make it unsure")
+		t.Fatal("refto without claims file should make it unsure")
 	}
 	if ok, err := act.Heal(ctx); !ok || err != nil {
 		t.Fatal(ok, err)
 	}
 	if d, _ := as.Decide(Ref{repoA, revA}); d.Unsure {
-		t.Fatalf("act healed %+v", d)
+		t.Fatalf("refto healed %+v", d)
 	}
 }
 

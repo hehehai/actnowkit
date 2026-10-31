@@ -42,9 +42,9 @@ var Defaults = []Default{
 	// HereNow: opens the menu bar panel.
 	{"herenow", Shortcut{ID: "openPanel", Title: "Open HereNow", Keys: "Control+Option+Command+H", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 
-	// Act: the quick collect panel, S for "save" (its screenshot
+	// Refto: the quick collect panel, S for "save" (its screenshot
 	// shortcuts have no default keys).
-	{"act", Shortcut{ID: "quickCollect", Title: "Quick Collect", Keys: "Control+Option+Command+S", Trigger: Press, Enabled: true, Mechanism: Carbon}},
+	{"refto", Shortcut{ID: "quickCollect", Title: "Quick Collect", Keys: "Control+Option+Command+S", Trigger: Press, Enabled: true, Mechanism: Carbon}},
 
 	// Inboxly: a new message from anywhere, N for "new".
 	{"inboxly", Shortcut{ID: "quickCompose", Title: "Quick Compose", Keys: "Control+Option+Command+N", Trigger: Press, Enabled: true, Mechanism: Carbon}},

@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.13.0 — 2026-10-31
+
+Act is renamed Refto, as a new product (no migration): its row, pins and
+default shortcut move to the new id. Code that names the app `"act"`
+(`AppByID`, `PinsOfApp`, `shortcuts.DefaultsOf`) must say `"refto"`;
+nothing else changed.
+
+- `family`: the table's row `act` (Act, `dev.hehehai.act`, URL scheme
+  `act`) becomes `refto` (Refto, `dev.hehehai.refto`, URL scheme `refto`,
+  team `TeamActNow`). Its product page stays https://actnow.dev/act until
+  the site has one for Refto. `dev.hehehai.act` and its variants are no
+  longer family bundle ids (`ErrNotFamily`); `dev.hehehai.refto.engine` is
+  a component.
+- `shortcuts`: Quick Collect (`Control+Option+Command+S`) is Refto's
+  default; `DefaultsOf("act")` is empty.
+- `models`: the pins table lists `refto` where it listed `act` (the same
+  five pins: EmbeddingGemma 2, Qwen3.5 2B and the three shared with
+  Dicta, AudioSmith and VoxtNew).
+- Claims an old Act build wrote (`models/claims/dev.hehehai.act.json`)
+  still protect its models like any app's: while Act is installed (its
+  manifest names it "Act") or unknown to the registry, they count as a
+  user; once it is uninstalled they are orphans, cleaned up only when the
+  user asks, and never taking a model an installed app (Refto) claims.
+  Apps without claims that relied on `PinsOfApp("act")` to keep an
+  installed Act's models no longer do; Act always wrote claims.
+
 ## v0.12.1 — 2026-10-26
 
 What a model download takes from an endpoint is checked against the

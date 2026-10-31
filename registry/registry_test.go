@@ -121,12 +121,12 @@ func TestLearningManifest(t *testing.T) {
 	}
 }
 
-// TestLibraryManifest: Act's manifest, as another app ("Save to Act")
+// TestLibraryManifest: Refto's manifest, as another app ("Save to Refto")
 // finds it by capability.
 func TestLibraryManifest(t *testing.T) {
 	d := family.At(t.TempDir())
-	m := manifest("dev.hehehai.act", "/Applications/Act.app")
-	m.URLScheme = "act"
+	m := manifest("dev.hehehai.refto", "/Applications/Refto.app")
+	m.URLScheme = "refto"
 	m.Capabilities = []string{CapModelsHF, CapEmbedLocal, CapLibrary}
 	if err := Write(d, m); err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestLibraryManifest(t *testing.T) {
 		t.Fatalf("%d manifests, errs %v", len(ms), errs)
 	}
 	got := ms[0]
-	if got.App != "act" || got.URLScheme != "act" || !got.Has(CapLibrary) || !got.Has(CapEmbedLocal) || got.Has(CapVLMLocal) {
+	if got.App != "refto" || got.URLScheme != "refto" || !got.Has(CapLibrary) || !got.Has(CapEmbedLocal) || got.Has(CapVLMLocal) {
 		t.Errorf("%+v", got)
 	}
 }

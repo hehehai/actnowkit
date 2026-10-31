@@ -21,13 +21,14 @@ type App struct {
 
 // Teams of the family (spec §17 Q1).
 const (
-	TeamActNow  = "779M533DL5" // AudioSmith, Auralink, Dicta, Pik, HereNow, CaptionCraft, Paralign, Act, Inboxly
+	TeamActNow  = "779M533DL5" // AudioSmith, Auralink, Dicta, Pik, HereNow, CaptionCraft, Paralign, Refto, Inboxly
 	TeamVoxtNew = "RY2TQTYSKQ" // VoxtNew
 )
 
 // BundlePrefix starts every family bundle id. Bundle ids never change:
 // macOS keeps privacy permissions (microphone, accessibility) by team and
-// bundle id.
+// bundle id. (One exception, v0.13.0: Act was renamed Refto before its
+// release, as a new product: dev.hehehai.act is no longer in the table.)
 const BundlePrefix = "dev.hehehai."
 
 // Apps is the built-in table, as the apps' mygo.json say (identifier,
@@ -41,7 +42,9 @@ var Apps = []App{
 	{ID: "herenow", Name: "HereNow", BundleID: "dev.hehehai.herenow", URLScheme: "herenow", ProductURL: "https://actnow.dev/herenow", TeamID: TeamActNow},
 	{ID: "captioncraft", Name: "CaptionCraft", BundleID: "dev.hehehai.captioncraft", URLScheme: "captioncraft", ProductURL: "https://actnow.dev/captioncraft", TeamID: TeamActNow},
 	{ID: "paralign", Name: "Paralign", BundleID: "dev.hehehai.paralign", URLScheme: "paralign", ProductURL: "https://actnow.dev/paralign", TeamID: TeamActNow},
-	{ID: "act", Name: "Act", BundleID: "dev.hehehai.act", URLScheme: "act", ProductURL: "https://actnow.dev/act", TeamID: TeamActNow},
+	// Refto was Act (dev.hehehai.act, scheme act) until v0.13.0. Its
+	// product page is still actnow.dev/act until the site has a Refto page.
+	{ID: "refto", Name: "Refto", BundleID: "dev.hehehai.refto", URLScheme: "refto", ProductURL: "https://actnow.dev/act", TeamID: TeamActNow},
 	{ID: "inboxly", Name: "Inboxly", BundleID: "dev.hehehai.inboxly", URLScheme: "inboxly", ProductURL: "https://actnow.dev/inboxly", TeamID: TeamActNow},
 }
 

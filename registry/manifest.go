@@ -48,7 +48,7 @@ const (
 	// subtitle file to use instead of transcribing it).
 	CapLearning = "learning"
 	// CapLibrary: a library of media and documents that takes files other
-	// apps hand over ("Save to Act"). Such an app opens
+	// apps hand over ("Save to Refto"). Such an app opens
 	// <scheme>://import?path=<file>[&path=…][&tags=a,b][&note=…][&source=<url>]
 	// and <scheme>://new?url=<link> (fills its collect window, no download).
 	CapLibrary = "library"

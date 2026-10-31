@@ -2,7 +2,7 @@
 
 Shared Go packages for the [ActNow](https://actnow.dev) family of macOS apps
 (AudioSmith, Dicta, Auralink, VoxtNew, Pik, HereNow, CaptionCraft, Paralign,
-Act, Inboxly).
+Refto, Inboxly).
 They let the apps on one Mac find each other and share what can be shared —
 the Hugging Face model cache, remote-service API keys, general settings —
 without deleting each other's models or fighting over global shortcuts.
