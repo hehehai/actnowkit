@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.19.0 — 2026-11-16
+
+A fix: `redact` no longer crashes the app on a URL that does not parse.
+Code written for v0.18 builds and behaves as before on every other input.
+
+- `redact`: `Text` and `URL` called each other on a URL net/url rejects (a
+  bad escape such as `https://evil.example/%zz` or a proxy password with a
+  bare `%`, `socks5://me:p%ss@host`, or a broken host) until the stack
+  overflowed, a fatal error no `recover` catches. Since apps pass every log
+  line through `Text`, one bad unsubscribe redirect, link in a mail or
+  proxy setting killed the process. Such a URL is now redacted as raw
+  text, without parsing: the user info before the authority's last `@`
+  (`user:REDACTED@`, a lone user `REDACTED@`), the secret values of its
+  query, then the rules for text outside URLs (secret JSON fields,
+  parameters, Authorization, Cookie and API-key headers, bearer tokens,
+  key shapes). `Text` only calls helpers that never call back; a fuzz test
+  (`FuzzText`) checks that `Text`, `URL` and `Error` end on any input, and
+  regression tests cover malformed escapes, many bad URLs on one line and
+  megabyte inputs.
+
 ## v0.18.0 — 2026-11-14
 
 - `redact`: `Text` masked the scheme word of an Authorization header and

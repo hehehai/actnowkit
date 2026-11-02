@@ -39,12 +39,24 @@ func secretParam(name string) bool {
 
 // URL redacts one URL: the password of its user info (user:pass@ →
 // user:REDACTED@; a lone user, which proxies use as a token, too) and the
-// values of SecretParams in its query. Text that does not parse as a URL
-// goes through Text.
+// values of SecretParams in its query. A URL that net/url rejects (a bad
+// escape such as %zz or p%ss, a broken host) is redacted as raw text: its
+// user info and secret query values by position, then the rules Text uses
+// outside URLs. Text without a scheme goes through Text.
 func URL(raw string) string {
 	u, err := url.Parse(raw)
+	if err == nil && u.Scheme == "" {
+		return Text(raw) // Text calls redactURL, never URL: no loop
+	}
+	return redactURL(raw)
+}
+
+// redactURL redacts one URL found by urlRE. It never calls Text or URL,
+// so Text ↔ URL cannot recurse.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" {
-		return Text(raw)
+		return rawURL(raw)
 	}
 	changed := false
 	if u.User != nil {
@@ -64,6 +76,39 @@ func URL(raw string) string {
 		return raw
 	}
 	return strings.Replace(u.String(), url.QueryEscape(Mask), Mask, -1)
+}
+
+// rawURL redacts a URL that does not parse, without parsing it: the user
+// info before the last @ of the authority (as net/url splits it), the
+// secret values of the query (after the first ?, before #), then the
+// non-URL rules.
+func rawURL(raw string) string {
+	s := raw
+	if i := strings.Index(s, "://"); i >= 0 {
+		start := i + 3
+		end := len(s)
+		if j := strings.IndexAny(s[start:], "/?#"); j >= 0 {
+			end = start + j
+		}
+		if at := strings.LastIndexByte(s[start:end], '@'); at >= 0 {
+			user := s[start : start+at]
+			masked := Mask
+			if name, _, has := strings.Cut(user, ":"); has {
+				masked = name + ":" + Mask
+			}
+			s = s[:start] + masked + s[start+at:]
+		}
+	}
+	if i := strings.IndexByte(s, '?'); i >= 0 {
+		end := len(s)
+		if j := strings.IndexByte(s[i+1:], '#'); j >= 0 {
+			end = i + 1 + j
+		}
+		if q, ok := redactQuery(s[i+1 : end]); ok {
+			s = s[:i+1] + q + s[end:]
+		}
+	}
+	return nonURL(s)
 }
 
 // redactQuery masks secret values in a raw query, keeping its order.
@@ -135,8 +180,14 @@ func Text(s string) string {
 			trail = m[len(m)-1:] + trail
 			m = m[:len(m)-1]
 		}
-		return URL(m) + trail
+		return redactURL(m) + trail
 	})
+	return nonURL(s)
+}
+
+// nonURL applies the rules for secrets outside URLs. It calls nothing else
+// in the package.
+func nonURL(s string) string {
 	s = jsonRE.ReplaceAllString(s, "${1}"+Mask+`"`)
 	s = paramRE.ReplaceAllString(s, "${1}${2}="+Mask)
 	s = queryWordRE.ReplaceAllString(s, "${1}${2}="+Mask)
