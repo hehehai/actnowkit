@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.16.0 — 2026-11-06
 
 The apps' copies of the language-model layer, merged: a new package only,
 so code written for v0.15 builds and behaves as before.
