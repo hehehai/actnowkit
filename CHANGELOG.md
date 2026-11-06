@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.15.0 — 2026-11-06
 
 The apps' copies of the language table and of the translation checks,
 merged: new packages only, so code written for v0.14 builds and behaves as
