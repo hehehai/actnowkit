@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.14.0 — 2026-11-06
 
 The apps' copies of their UI translation core and third-party licence
 generator, merged: nothing else changed, so code written for v0.13 builds
