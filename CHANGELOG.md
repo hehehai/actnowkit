@@ -1,5 +1,46 @@
 # Changelog
 
+## Unreleased
+
+The apps' copies of the language table and of the translation checks,
+merged: new packages only, so code written for v0.14 builds and behaves as
+before. actnowkit now requires `golang.org/x/text` (v0.43.0; `lang`'s
+search folding and tag parsing).
+
+- New package `lang`: the language table (CaptionCraft's, the superset of
+  the copies: 652 languages, `languages.tsv` + `aliases.tsv` embedded,
+  `gen/main.go` to regenerate them) — `Language` (codes, names, script,
+  RTL, region, `Flag`, `NameIn`, macrolanguage, OmniVoice/Whisper),
+  `Canonical`, `Lookup`, `All`, `Len`, `Fold`, `Search`, `OmniVoiceCodes`,
+  `WhisperCodes`, `Match`, `Annotate`, `ForModel`, `Option`; and `Tag`
+  (the apps' `translate.Lang`): `Parse`, `Variant`, `Describe`,
+  `Unspaced`.
+  Drift between the copies: Inboxly, Paralign and Dicta carry subsets
+  (no `Flag`, `All`, `Search`, `Match`…; Dicta's table is unsorted, which
+  nothing of its showed); AudioSmith and Auralink build the search index
+  at load rather than on the first `Search`; Act ships a 4-column table
+  (code, ISO 639-3, English and Chinese names). The data is the same in
+  all (Act's columns included). Inboxly's `Detect` and code-block rules
+  stay in Inboxly.
+- New package `script`: `IsUnspaced`, `IsWordRune` (CaptionCraft's
+  `text`), `Dominant`, `Has`, `Of` and the script names (the checks'
+  `dominantScript`, `hasScript`, `targetScript`).
+- New package `hanzi`: the Hant-Hans and Hans-Hant tables of the apps'
+  `translate/hanzi*.go` — `Simplified`, `Traditional` (new),
+  `TraditionalOnly`, `SimplifiedOnly`, `HasTraditionalOnly`,
+  `HasSimplifiedOnly`, `ToSimplified`, `ToTraditional`.
+- New package `transcheck`: the checks of the apps' `translate/checks.go`
+  and `hanzi.go`, exported — `Untranslated`, `WrongScript`, `Wordless`,
+  `CutShort`, `TooLong`, `ShortenedTooMuch`, `Repeats` (`OverlapShare`),
+  `MeaningUnits`, `Sentences`, `SplitSentences`, `ChineseScript`,
+  `OtherHan`, `ToScript`, `AsItIs`, and Paralign's `Checked` (a system
+  engine's translation). Drift: Dicta lacks `wordless` and
+  `shortenedTooMuch`; Paralign and Dicta tokenise `Repeats`' trigrams with
+  a narrower unspaced-letter rule (Han, kana, Thai) than CaptionCraft's
+  `text.IsUnspaced && text.IsWordRune` (also Lao, Khmer, Myanmar, Tibetan,
+  Bopomofo, full-width letters and digits, and combining marks), which
+  `transcheck` keeps.
+
 ## v0.14.0 — 2026-11-06
 
 The apps' copies of their UI translation core and third-party licence

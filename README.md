@@ -27,7 +27,7 @@ package checks either.
 
 ```sh
 go get github.com/hehehai/actnowkit@v0.11.0
-go mod tidy   # adds purego, which only the darwin files import
+go mod tidy   # adds purego (only the darwin files import it) and, with lang, golang.org/x/text
 ```
 
 Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
@@ -53,6 +53,10 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`activity`](activity) | The activity cards at the sidebar's foot (the family's window spec §2): jobs grouped by kind with "done/total", a kind's finished card for 3 s, the stack's geometry (closed: the first card and two peeking under it; open: a list of four). No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
 | [`i18n`](i18n) | The apps' UI translation core: messages keyed by their English text (`T`, `N` plural, `X` context), catalogues `<tag>.json` read from the app's `fs.FS`, `Match` (system locale → supported language), plural rules, dates; [`i18n/i18ntest`](i18n/i18ntest) checks the catalogues against the sources (key parity, formatting verbs, Chinese style) and syncs them. |
+| [`lang`](lang) | The family's language table (652 languages: OmniVoice's and Whisper's) as embedded data: `Canonical` and `Lookup` for any tag or alias ("zh-Hans-CN", "cmn", "iw", Whisper's "jw"), names in English, the language and Chinese, script, RTL, region and flag, `Search` for pickers, `Match`/`ForModel`/`Annotate` against a model's language list; `Parse` → `Tag` (script and region as the tag says: zh-TW is Traditional) with `Variant` and `Describe` for prompts. |
+| [`script`](script) | Which writing system text is in: `IsUnspaced` (Han, kana, Thai… written without spaces), `IsWordRune`, `Dominant`, `Has`, `Of` (a language's script). |
+| [`hanzi`](hanzi) | Simplified and Traditional Chinese told apart by character (ICU's transforms, minus what both scripts write): `Simplified`, `Traditional`, `HasTraditionalOnly`, `ToSimplified`, … |
+| [`transcheck`](transcheck) | The checks of a translated line the apps share: untranslated, wrong script, wordless, cut short, too long, repeating another line, Chinese in the other script (fixed by `ToScript`), `AsItIs`; `Checked` for a system engine's translation. |
 | [`thirdparty`](thirdparty) | The third-party licence file an app ships (`ThirdPartyLicenses.txt`): its format (`Parse`, `Load`), the licence classifier, the copyleft rule for closed-source apps. |
 | [`cmd/actnow-licenses`](cmd/actnow-licenses) | Writes and checks (`-check`) an app's `ThirdPartyLicenses.txt` from its Go modules, Swift packages, npm packages, extras and separate programs, per the app's `actnow-licenses.json`. |
 | [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
@@ -477,6 +481,35 @@ func TestKeyParity(t *testing.T) {
 `Parity.Sync` rewrites the catalogues (keeps what is used, adds new
 translations from files, lists what is missing); `i18ntest.Style` with
 `ZhHansRules` checks the Chinese copy's conventions (拷贝, 废纸篓, …).
+
+### Languages and translation checks
+
+`lang` is the one language table: settings, catalogues and links name a
+language in many spellings, and the table turns each into one code:
+
+```go
+l, ok := lang.Lookup("zh-Hans-CN")         // l.Code "zh", l.Native "中文", l.NameIn("zh-Hans") "中文", l.Flag() "🇨🇳"
+code, ok := lang.Match(lang.WhisperCodes(), "jv") // "jw": the model's own spelling
+t, _ := lang.Parse("zh-TW")                // t.Script "Hant", t.Variant() "zh-Hant", t.Describe() "Chinese (Traditional, Taiwan)"
+```
+
+`transcheck` checks what a model (or the system) gave back for a line
+before the app takes it; a line that fails is translated again on its own:
+
+```go
+switch {
+case transcheck.Untranslated(src, out, t), transcheck.Wordless(src, out),
+	transcheck.CutShort(src, out), transcheck.TooLong(src, out), transcheck.OtherHan(out, t):
+	// ask again for this line alone
+}
+out = transcheck.ToScript(out, t) // 見到 → 见到 for zh-Hans
+```
+
+`script` and `hanzi` are the helpers underneath, for the apps' own text
+code. The data: OmniVoice's language list (Apache-2.0), Whisper's (MIT),
+Unicode CLDR 48.2 and ICU's transforms (Unicode licence); `lang/gen`
+regenerates the table. An app that ships `lang` lists them among its
+third-party licences.
 
 ### Third-party licences
 
