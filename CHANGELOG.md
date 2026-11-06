@@ -1,5 +1,61 @@
 # Changelog
 
+## Unreleased
+
+The apps' copies of the language-model layer, merged: a new package only,
+so code written for v0.15 builds and behaves as before.
+
+- New package `llm` (CaptionCraft's, Dicta's and Paralign's
+  `internal/llm`, best of the three): `Request`/`Response`/`Usage`,
+  `Backend`; `Client` (`Chat`: retries with full-jitter backoff,
+  per-attempt timeout, `<think>` stripping and filtered streaming,
+  estimated usage; `JSON`: extraction, `Schema` validation, decoding and
+  repair turns); `Schema` (`Object`, `Array`, `String`, `Number`,
+  `Integer`, `Boolean`, `Enum`, `Range`, `Count`, `Describe`, `Nullable`,
+  `Closed`, `Validate`); `ExtractJSON`, and CaptionCraft's `closeJSON` and
+  `replyJSON` as `CloseJSON` and `ReplyJSON`; `Meter` and
+  `EstimateTokens`; `StripThinking`; `*Error` with its codes, `Code`,
+  `Param`; `EngineBackend` with the engine's `llm.generate` wire types
+  (`GenerateParams`, `GenerateResult`, `GenerateMessage`,
+  `TokenNotification`, the same in every app's protocol package).
+  What was each app's is injected: the skills and their defaults
+  (`Skill`, `SkillDefaults`, `Client.Defaults`; the apps keep their own
+  skill tables), the error values an `*Error` unwraps to and the engine
+  call's errors are read by (`SetSentinels`), the protocol's error type
+  (`EngineError`, an interface the app's `proto.Error` implements).
+- Fixes merged from the copies:
+  - Dicta: a call given up (no time left before the deadline, the wait
+    before a retry cancelled, ctx ended between attempts) is metered
+    too; `ExtractJSON` takes the longest value that parses outside any
+    other (not a "[1]" citing before the answer) and stops at a value
+    left open (what parses inside a reply cut off is a fragment);
+    `Client.JSON` treats a reply cut off inside a value as cut off (a
+    repair turn, or `CodeInvalidJSON`), not its parsed fragment.
+    (Refined here: a reply cut off after its whole value is used.)
+  - Paralign: a repair turn samples from the request as asked (at least
+    `RepairTemperature`, its own topP, the turn as seed) and a request
+    that samples already keeps its settings.
+  - CaptionCraft: `CloseJSON` drops a list item cut off rather than
+    closing it half written (a suggestion without its "right" deleted
+    words), and `ReplyJSON` closes a reply cut off before searching it.
+    One string scanner now serves `ExtractJSON`, `CloseJSON` and the
+    cut-off test (it was written four times).
+- Dropped as unused in every app: `ModelInfo`, `Schema.Name`,
+  `EngineBackend.MapError` (replaced by `EngineError` and the
+  sentinels), `Error.RetryAfter` and `RetryPolicy.MaxRetryAfter` (no
+  backend sets it), `Meter.OnRecord`, `Total` and `Reset`; the skill
+  constants and `Defaults` (each app's).
+- Drift between the copies: Dicta lacks the sampled repair turns; Dicta
+  and Paralign lack `SkillHighlights` (Dicta also the proofread, terms and
+  chapters skills), which stay the apps'. AudioSmith and Auralink carry
+  an older, larger variant with cloud providers (OpenAI-compatible,
+  Anthropic, a router, presets, Retry-After, `WithBudget` queueing for
+  the engine's gpu lane), other error codes (`llm.server` for the
+  engine's `llm.engine`, `llm.network`…) and no `Seconds`/
+  `TokensPerSecond`; they are not merged here. Inboxly's `llm` is a
+  different design (Apple Foundation Models and MLX behind a preempting
+  runner) and stays Inboxly's.
+
 ## v0.15.0 — 2026-11-06
 
 The apps' copies of the language table and of the translation checks,

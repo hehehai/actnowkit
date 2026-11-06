@@ -57,6 +57,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`script`](script) | Which writing system text is in: `IsUnspaced` (Han, kana, Thai… written without spaces), `IsWordRune`, `Dominant`, `Has`, `Of` (a language's script). |
 | [`hanzi`](hanzi) | Simplified and Traditional Chinese told apart by character (ICU's transforms, minus what both scripts write): `Simplified`, `Traditional`, `HasTraditionalOnly`, `ToSimplified`, … |
 | [`transcheck`](transcheck) | The checks of a translated line the apps share: untranslated, wrong script, wordless, cut short, too long, repeating another line, Chinese in the other script (fixed by `ToScript`), `AsItIs`; `Checked` for a system engine's translation. |
+| [`llm`](llm) | The apps' language-model layer over the family engine's local MLX model (`llm.generate`): `Client` (retries with backoff, the app's skill defaults, timeouts, `<think>` filtering, streaming, usage `Meter`), JSON replies (`Client.JSON`: extraction, `Schema` validation, sampled repair turns; `ExtractJSON`, `CloseJSON` and `ReplyJSON` for a reply cut off), `EngineBackend` and the `llm.generate` wire types, `*Error` codes that unwrap to the app's sentinels. |
 | [`thirdparty`](thirdparty) | The third-party licence file an app ships (`ThirdPartyLicenses.txt`): its format (`Parse`, `Load`), the licence classifier, the copyleft rule for closed-source apps. |
 | [`cmd/actnow-licenses`](cmd/actnow-licenses) | Writes and checks (`-check`) an app's `ThirdPartyLicenses.txt` from its Go modules, Swift packages, npm packages, extras and separate programs, per the app's `actnow-licenses.json`. |
 | [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
@@ -510,6 +511,34 @@ code. The data: OmniVoice's language list (Apache-2.0), Whisper's (MIT),
 Unicode CLDR 48.2 and ICU's transforms (Unicode licence); `lang/gen`
 regenerates the table. An app that ships `lang` lists them among its
 third-party licences.
+
+### Language model
+
+`llm` talks to the local model through the engine the app already runs.
+The app supplies its engine call, its skills and its error values:
+
+```go
+func init() { // in the package that defines the app's errors
+	llm.SetSentinels(llm.Sentinels{Cancelled: ErrCancelled, Busy: ErrBusy, Engine: ErrEngine, /* … */})
+}
+
+backend := &llm.EngineBackend{Call: func(ctx context.Context, method string, params any,
+	notify func(string, json.RawMessage)) (json.RawMessage, error) {
+	return sup.Call(ctx, proto.RoleGPU, id, method, params, relay(notify)) // the engine's errors implement llm.EngineError
+}}
+client := &llm.Client{Backend: backend, Timeout: -1, Defaults: skillDefaults, Meter: &llm.Meter{}}
+
+var out struct{ Lines []Line }
+resp, err := client.JSON(ctx, llm.Request{Model: repo, Messages: msgs, Schema: schema, Skill: "translate"}, &out, 0)
+switch llm.Code(err) {
+case llm.CodeContextLength: // split the input (llm.Param(err, "limit"))
+case llm.CodeBusy, llm.CodeUnavailable: // retried already; say "try again"
+}
+```
+
+A caller that reads a reply itself takes its JSON with `llm.ReplyJSON(resp)`:
+a reply that ran out of tokens is closed (`CloseJSON`, the last half-written
+list item dropped) instead of yielding only its first item.
 
 ### Third-party licences
 
