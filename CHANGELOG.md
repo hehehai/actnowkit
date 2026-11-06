@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+The apps' copies of their UI translation core and third-party licence
+generator, merged: nothing else changed, so code written for v0.13 builds
+and behaves as before.
+
+- New package `i18n`: `Catalog` (`New`, `MustNew` over the app's `fs.FS`
+  of `<tag>.json` catalogues), `T`, `N`, `X` (gettext's `context\x04msg`
+  keys), `SetLocale`, `Locale`, `Supported`, `DateTime`, `Date`; `Match`
+  (Chinese by script: zh-TW → zh-Hant, never offered zh-Hans; other
+  languages by their language subtag), `PluralOne` (French and Portuguese
+  0 and 1; none in Chinese, Japanese, Korean…), `Name` (autonyms). From
+  the apps' copies: an empty translation falls back to English in `X` as
+  in `T` (CaptionCraft), and a singular without a number is not formatted
+  (`%!(EXTRA int=1)`; Refto #302).
+- New package `i18n/i18ntest`: `Parity` scans a module's T/N/X calls
+  (nested modules skipped) and `Check`s (`Problems`) the catalogues — every
+  key translated, none unused, the same formatting verbs, the source
+  language's catalogue empty —, `Sync`s them; `Verbs`; `Style` and
+  `ZhHansRules` (Inboxly's Chinese conventions).
+- New package `thirdparty`: the `ThirdPartyLicenses.txt` format (`Parse`,
+  `Load`, `Component`, `Ships: program`), `Classify`, `Copyleft`,
+  `CopyleftIn`, `Check`.
+- New command `cmd/actnow-licenses`: the apps' generator, configured by the
+  app's `actnow-licenses.json` (app name, header file, patched Go modules,
+  `Package.resolved`, script-pinned Swift packages, npm list, extras,
+  programs; each optional part may be left out). `-check` also fails when
+  the header changed (Inboxly); source files named like a licence
+  (`licence_test.go`, `License.swift`) are not copied (Inboxly); Swift
+  clones are cached in `actnow-licenses` under the user cache directory,
+  shared by the apps.
 ## v0.13.0 — 2026-10-31
 
 Act is renamed Refto, as a new product (no migration): its row, pins and

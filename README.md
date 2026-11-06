@@ -17,8 +17,10 @@ package checks either.
   notifications, LaunchServices, `NSRunningApplication`, code-signing Team
   ID) use [purego](https://github.com/ebitengine/purego); on other systems
   they compile to no-ops, so the logic is tested on Linux.
-- No UI, no dependency on MyGo, no i18n: packages export English and Chinese
-  reference strings (`family.Text`) for apps to put in their own catalogues.
+- No UI, no dependency on MyGo. The protocol packages do not translate:
+  they export English and Chinese reference strings (`family.Text`) for
+  apps to put in their own catalogues; `i18n` is the catalogue code the
+  apps share (their messages stay in the app).
   `updates` takes MyGo's updater as two functions.
 - Status: **v0.11** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
@@ -50,6 +52,9 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
 | [`activity`](activity) | The activity cards at the sidebar's foot (the family's window spec §2): jobs grouped by kind with "done/total", a kind's finished card for 3 s, the stack's geometry (closed: the first card and two peeking under it; open: a list of four). No UI. |
 | [`conformance`](conformance) | Sample files with expected results, a fixture (`$FAMILY` + `$HUB` in temp dirs), a fake Hugging Face endpoint, and the scenario suite any implementation can run. |
+| [`i18n`](i18n) | The apps' UI translation core: messages keyed by their English text (`T`, `N` plural, `X` context), catalogues `<tag>.json` read from the app's `fs.FS`, `Match` (system locale → supported language), plural rules, dates; [`i18n/i18ntest`](i18n/i18ntest) checks the catalogues against the sources (key parity, formatting verbs, Chinese style) and syncs them. |
+| [`thirdparty`](thirdparty) | The third-party licence file an app ships (`ThirdPartyLicenses.txt`): its format (`Parse`, `Load`), the licence classifier, the copyleft rule for closed-source apps. |
+| [`cmd/actnow-licenses`](cmd/actnow-licenses) | Writes and checks (`-check`) an app's `ThirdPartyLicenses.txt` from its Go modules, Swift packages, npm packages, extras and separate programs, per the app's `actnow-licenses.json`. |
 | [`cmd/actnow-sounds`](cmd/actnow-sounds) | `list`, `check`, `subset` (copy the sounds an app ships, with their catalogue), `play` (macOS) for a sound catalogue. |
 | [`cmd/actnow-conformance`](cmd/actnow-conformance) | Inspect a real family directory on a Mac: `check`, `discover`, `claims`, `lock`, `watch`, `pins`. |
 
@@ -433,6 +438,65 @@ if activity.Showing(cards) { c.After(time.Second) }
 // Scale, Fade of each card drawn, the first last so it is on top),
 // activity.CardHeight, CardGap, CardPeek, Show.
 ```
+
+### Translations
+
+The family's apps translate their UI the same way: messages keyed by their
+English text, so the English UI never changes and a missing translation
+shows English. The app keeps a small package that embeds its catalogues
+and offers `T`, `N` and `X` as functions:
+
+```go
+package i18n // the app's internal/i18n
+
+//go:embed locales/*.json
+var localeFS embed.FS
+
+var cat = i18n.MustNew(i18n.Config{Locales: localeFS, Dir: "locales", Supported: []string{"en", "zh-Hans"}})
+
+func T(msg string, args ...any) string             { return cat.T(msg, args...) }
+func N(n int, one, other string, args ...any) string { return cat.N(n, one, other, args...) }
+func X(context, msg string, args ...any) string    { return cat.X(context, msg, args...) }
+func SetLocale(tag string) string                  { return cat.SetLocale(tag) } // Match: "zh_CN" → "zh-Hans"
+```
+
+and checks its catalogues against its sources in a test:
+
+```go
+func TestKeyParity(t *testing.T) {
+	i18ntest.Parity{
+		Root:      "../..",
+		Packages:  []string{"github.com/hehehai/Dicta/internal/i18n"},
+		Skip:      []string{"engine"},
+		Dir:       "locales",
+		Supported: Supported(),
+	}.Check(t) // every T/N/X literal translated, none left over, same verbs
+}
+```
+
+`Parity.Sync` rewrites the catalogues (keeps what is used, adds new
+translations from files, lists what is missing); `i18ntest.Style` with
+`ZhHansRules` checks the Chinese copy's conventions (拷贝, 废纸篓, …).
+
+### Third-party licences
+
+Each app ships `ThirdPartyLicenses.txt` (format: `thirdparty`) and checks
+it before a release:
+
+```sh
+go run github.com/hehehai/actnowkit/cmd/actnow-licenses          # regenerate
+go run github.com/hehehai/actnowkit/cmd/actnow-licenses -check   # the release check
+```
+
+The app's `third_party/licenses/actnow-licenses.json` names the file, its
+header text, the app's Go packages and patched modules, its
+`Package.resolved` and script-pinned Swift packages, an npm list, and its
+`extras.json` and `programs.json` (see the command's doc). The generator
+refuses GPL, LGPL and AGPL in what is linked into the app (separate
+programs keep their own licence) and licences it cannot tell; `-check`
+compares the inventory (the components and versions) and the header
+without fetching anything but Go modules. The app reads the file with
+`thirdparty.Load(resourcesDir)`.
 
 ### Licences (paid apps)
 
