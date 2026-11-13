@@ -613,6 +613,19 @@ func TestPins(t *testing.T) {
 	if len(PinsOfApp("inboxly")) != 3 {
 		t.Errorf("inboxly pins: %d", len(PinsOfApp("inboxly")))
 	}
+	// VoxtNew's (VoxtMini's) catalogue since v0.17.0: its 15 new repos
+	// and the Gemma 4 E2B and E4B rows it shares with Dicta (and Refto).
+	if n := len(PinsOfApp("voxtnew")); n != 24 {
+		t.Errorf("voxtnew pins: %d", n)
+	}
+	for _, repo := range []string{"mlx-community/gemma-4-e2b-it-4bit", "mlx-community/gemma-4-e4b-it-4bit"} {
+		if p, _ := PinOf(repo); !slices.Contains(p.Apps, "voxtnew") {
+			t.Errorf("%s: apps %v", repo, p.Apps)
+		}
+	}
+	if p, _ := PinOf("mlx-community/whisper-small-mlx"); len(p.Aux) != 1 || p.Aux[0].Repo != "openai/whisper-small" {
+		t.Errorf("whisper-small aux %+v", p.Aux)
+	}
 }
 
 func TestSharedWithinApp(t *testing.T) {

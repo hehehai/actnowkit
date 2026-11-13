@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.17.0 — 2026-11-13
+
+VoxtNew's (VoxtMini's) new models in the pins table: new rows only, so code
+written for v0.16 builds and behaves as before.
+
+- `models`: pins.json gains VoxtNew's 15 new catalogue repos (VoxtMini's
+  fuller local catalogue), each at the commit VoxtMini pins, with the bytes
+  it downloads: speech — Qwen3-ASR 1.7B 6-bit, Whisper large-v3 and small
+  (with their `openai/whisper-*` tokenizer repos as `aux`), Parakeet TDT
+  0.6B v3, SenseVoice Small, Cohere Transcribe 03-2026, Nemotron 3.5 ASR
+  streaming 0.6B 8-bit, MOSS Transcribe Diarize (the original bf16 weights,
+  a different model from Dicta's 8-bit); language — Qwen3.5 9B OptiQ,
+  Gemma 4 12B OptiQ, GLM-4 9B 0414, Qwen3.6 27B, Ministral 3 3B, LFM2
+  8B-A1B 3-bit, LFM2 1.2B. The seven speech models VoxtNew lists as coming
+  soon say so in their note. VoxtNew joins the Gemma 4 E2B and E4B rows.
+
 ## v0.16.0 — 2026-11-06
 
 The apps' copies of the language-model layer, merged: a new package only,
