@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- `redact`: `Text` masked the scheme word of an Authorization header and
+  kept the token (`Authorization: Bearer abc…` gave `Authorization:
+  REDACTED abc…`). It now keeps the scheme and masks the credentials
+  (`Authorization: Bearer REDACTED`; Basic, Token, Digest, … alike; a raw
+  value goes whole), for `Proxy-Authorization` too and for the `name=value`
+  form. New: `Cookie`/`Set-Cookie` header values; secret JSON string fields
+  (`"api_key": "…"`, `"access_token"`, `"refresh_token"`, `"Authorization"`,
+  camelCase `apiKey`, `accessToken`, `clientSecret`, …); `key=`, `auth=`,
+  `code=`, `pin=` after `?` or `&` outside URLs; key shapes GitHub
+  `github_pat_…`, GitLab `glpat-…`, Stripe `sk_live_…`/`rk_test_…`, and
+  JWTs (`eyJ….eyJ….…`). `SecretParams` gains `accesstoken`,
+  `refreshtoken`, `idtoken`, `clientsecret`, `session_token`,
+  `sessiontoken`.
+
 ## v0.17.0 — 2026-11-13
 
 VoxtNew's (VoxtMini's) new models in the pins table: new rows only, so code

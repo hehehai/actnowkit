@@ -24,6 +24,7 @@ var SecretParams = []string{
 	"auth", "authorization", "password", "passwd", "pwd", "secret", "client_secret",
 	"sig", "signature", "x-amz-signature", "x-amz-credential", "x-amz-security-token",
 	"x-goog-signature", "x-goog-credential", "pin", "code",
+	"accesstoken", "refreshtoken", "idtoken", "clientsecret", "session_token", "sessiontoken",
 }
 
 func secretParam(name string) bool {
@@ -83,19 +84,33 @@ func redactQuery(q string) (string, bool) {
 }
 
 var (
-	urlRE    = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^\s"'<>]+`)
-	paramRE  = regexp.MustCompile(`(?i)([?&;\s"]|^)(` + paramAlt() + `)=([^&\s"';]+)`)
+	urlRE   = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^\s"'<>]+`)
+	paramRE = regexp.MustCompile(`(?i)([?&;\s"]|^)(` + paramAlt() + `)=([^&\s"';]+)`)
+	// The words too common in prose for paramRE count as parameters only in
+	// a query (after ? or &).
+	queryWordRE = regexp.MustCompile(`(?i)([?&])(key|auth|code|pin)=([^&\s"';]+)`)
+	// JSON fields whose string values are secrets: the whole value goes.
+	jsonRE   = regexp.MustCompile(`(?i)("(?:` + paramAlt() + `|auth|authorization|x-api-key|x-goog-api-key|xi-api-key|proxy-authorization|cookie|set-cookie)"\s*:\s*")(?:[^"\\]|\\.)*"`)
 	bearerRE = regexp.MustCompile(`(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}`)
-	headerRE = regexp.MustCompile(`(?i)\b(authorization|x-api-key|x-goog-api-key|api-key|xi-api-key)(\s*[:=]\s*)("?)[^\s",]+`)
+	// Header-like name: value or name=value. An Authorization value keeps
+	// its scheme word (Bearer, Basic, Token, …) and loses its credentials;
+	// a raw value goes whole.
+	authRE = regexp.MustCompile(`(?i)\b((?:proxy-)?authorization)(\s*[:=]\s*)("?)(?:(bearer|basic|token|digest|negotiate|apikey|key)\s+)?[^\s",]+`)
+	// Cookie values have spaces after their semicolons: up to the line's end.
+	cookieRE = regexp.MustCompile(`(?i)\b((?:set-)?cookie)(\s*:\s*)("?)[^\r\n"]+`)
+	headerRE = regexp.MustCompile(`(?i)\b(x-api-key|x-goog-api-key|api-key|xi-api-key)(\s*[:=]\s*)("?)[^\s",]+`)
 	// Well-known key shapes, wherever they appear.
-	keyRE = regexp.MustCompile(`\b(AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{16,}|hf_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[abpr]-[A-Za-z0-9-]{10,})`)
+	keyRE = regexp.MustCompile(`\b(AIza[0-9A-Za-z_-]{30,}|sk-[A-Za-z0-9_-]{16,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|hf_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|xox[abpr]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+)`)
 )
 
+// paramAlt is SecretParams as a regexp alternation, without the words
+// too common in prose (handled inside URLs and queries) and without
+// authorization (authRE keeps its scheme word).
 func paramAlt() string {
 	var alt []string
 	for _, p := range SecretParams {
-		if p == "code" || p == "pin" || p == "auth" || p == "key" {
-			continue // too common as words; handled inside URLs
+		if p == "code" || p == "pin" || p == "auth" || p == "key" || p == "authorization" {
+			continue
 		}
 		alt = append(alt, regexp.QuoteMeta(p))
 	}
@@ -103,9 +118,12 @@ func paramAlt() string {
 }
 
 // Text redacts every URL in s (URL), secret parameters outside URLs
-// (token=…), Authorization headers and bearer tokens, and well-known key
-// shapes (Google AIza…, OpenAI sk-…, Hugging Face hf_…, GitHub gh*_…,
-// Slack xox*-…).
+// (token=…; key=, auth=, code=, pin= only after ? or &), secret JSON string
+// fields ("api_key": "…"), Authorization and Proxy-Authorization headers
+// (the scheme word stays: "Authorization: Bearer REDACTED"), API-key and
+// Cookie headers, bearer tokens, and well-known key shapes (Google AIza…,
+// OpenAI/Anthropic sk-…, Stripe sk_live_…, Hugging Face hf_…, GitHub gh*_…
+// and github_pat_…, GitLab glpat-…, Slack xox*-…, JWTs).
 func Text(s string) string {
 	if s == "" {
 		return s
@@ -119,7 +137,18 @@ func Text(s string) string {
 		}
 		return URL(m) + trail
 	})
+	s = jsonRE.ReplaceAllString(s, "${1}"+Mask+`"`)
 	s = paramRE.ReplaceAllString(s, "${1}${2}="+Mask)
+	s = queryWordRE.ReplaceAllString(s, "${1}${2}="+Mask)
+	s = authRE.ReplaceAllStringFunc(s, func(m string) string {
+		g := authRE.FindStringSubmatch(m)
+		scheme := ""
+		if g[4] != "" {
+			scheme = g[4] + " "
+		}
+		return g[1] + g[2] + g[3] + scheme + Mask
+	})
+	s = cookieRE.ReplaceAllString(s, "${1}${2}${3}"+Mask)
 	s = headerRE.ReplaceAllString(s, "${1}${2}${3}"+Mask)
 	s = bearerRE.ReplaceAllString(s, "${1} "+Mask)
 	s = keyRE.ReplaceAllString(s, Mask)
