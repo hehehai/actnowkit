@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.18.0 — 2026-11-14
 
 - `redact`: `Text` masked the scheme word of an Authorization header and
   kept the token (`Authorization: Bearer abc…` gave `Authorization:
