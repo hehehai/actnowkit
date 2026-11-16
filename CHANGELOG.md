@@ -18,8 +18,10 @@ written for v0.20 builds and behaves as before.
   metadata filter drops the location); `Collect` (diagnostics.json: this
   Mac without names or serials, the app, its settings and extra lines as
   the app gives them, the newest log lines, the warnings and errors of the
-  last 7 days from the rotated logs, the last crash; every line through
-  `redact.Text`, `redact.Personal` and the app's own scrub; at most 2 MB);
+  last 7 days from the rotated logs, the last crash of the app and of its
+  helpers (`CrashFiles`); every line through `redact.Text` and
+  `redact.Personal`, log lines also through the app's own `Scrub`; at most
+  2 MB);
   `Manager` (state for the UI, `Submit` into an outbox that survives
   quitting and going offline, retries, `Resume`, `Retry`, `Discard`; the
   history of this Mac's feedback with statuses, unread replies, `Thread`,
