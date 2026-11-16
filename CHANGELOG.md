@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased (v0.22.0)
+
+- New module `github.com/hehehai/actnowkit/feedbackui` (its own go.mod,
+  tag `feedbackui/v0.22.0`; it depends on MyGo, the core packages still
+  do not): the feedback window the apps share. One window per app (`New`,
+  `Open` with a `feedback.Prefill`, `OpenHistory`, `OpenThread`, `Close`,
+  `Stop`); the form with the error report's card, a grid of thumbnails,
+  previews (images, the video in a web view, Open in QuickTime Player),
+  the sending's progress, failure and success; Your feedback with the
+  threads; `HistoryPanel` for an app's Settings and `ReportLink` for the
+  "Report this problem…" link; `Theme` (palettes, `FromMyGo`, control
+  callbacks) and `Texts`. `scripts/check-mygo.sh` builds and vets it
+  against every app's vendored MyGo.
+- New package `feedback/feedbacktest`: the feedback site in memory
+  (`Site`: identity, create, direct uploads, complete, list, get, reply;
+  knobs to fail, refuse, slow the uploads; `SupportReplies`), for the apps'
+  tests.
+- `feedback`: texts of the window (`TextOptional`, `TextEmailNeeded`,
+  `TextSeeWhatIsSent`, `TextWhatIsSent*`, `TextAddFiles`, `TextCopy`,
+  `TextCopied`, `TextDone`, `TextPrevious`, `TextNext`, `TextBack`,
+  `TextRefresh`, `TextLoading`, `TextUnreachable`, `TextYourReply`,
+  `TextImageOf`, `TextVideoOf`, `TextReportLines`, `TextToday`,
+  `TextSendFailed`).
+
 ## v0.21.1 — 2026-11-16
 
 A fix: code written for v0.21.0 builds and behaves as before.

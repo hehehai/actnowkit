@@ -1,0 +1,15 @@
+// Copy to go.work (ignored by git), or run scripts/work.sh <mygo dir>:
+// the module builds against the actnowkit next to it and an app's
+// vendored MyGo (every app replaces github.com/egoist/mygo with its
+// third_party/mygo; this module only uses the API all of them share).
+go 1.27.4
+
+use (
+	.
+	..
+)
+
+replace github.com/egoist/mygo => ../../Dicta/third_party/mygo
+
+// the actnowkit next to it, whatever version go.mod asks (not tagged yet)
+replace github.com/hehehai/actnowkit v0.22.0 => ../

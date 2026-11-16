@@ -114,6 +114,35 @@ var (
 		ZH: "反馈 {number} 已收到，我们会通过邮件和“我的反馈”回复你。",
 	}
 	TextOpenWindow = family.Text{EN: "Open the feedback window", ZH: "打开反馈窗口"}
+
+	TextOptional              = family.Text{EN: "Optional", ZH: "选填"}
+	TextEmailNeeded           = family.Text{EN: "We reply to this address.", ZH: "我们会回复到这个邮箱。"}
+	TextSeeWhatIsSent         = family.Text{EN: "See what is sent", ZH: "查看将发送的内容"}
+	TextWhatIsSent            = family.Text{EN: "What is sent", ZH: "将发送的内容"}
+	TextWhatIsSentDiagnostics = family.Text{
+		EN: "diagnostics.json, attached to your feedback when Include diagnostics is on.",
+		ZH: "diagnostics.json，开启“附上诊断信息”时随反馈发送。",
+	}
+	TextWhatIsSentReport = family.Text{
+		EN: "The error report, sent in diagnostics.json when it is included.",
+		ZH: "错误报告，勾选附上时放在 diagnostics.json 里发送。",
+	}
+	TextAddFiles    = family.Text{EN: "Add images or a video", ZH: "添加图片或视频"}
+	TextCopy        = family.Text{EN: "Copy", ZH: "复制"}
+	TextCopied      = family.Text{EN: "Copied", ZH: "已复制"}
+	TextDone        = family.Text{EN: "Done", ZH: "完成"}
+	TextPrevious    = family.Text{EN: "Previous", ZH: "上一个"}
+	TextNext        = family.Text{EN: "Next", ZH: "下一个"}
+	TextBack        = family.Text{EN: "Back", ZH: "返回"}
+	TextRefresh     = family.Text{EN: "Refresh", ZH: "刷新"}
+	TextLoading     = family.Text{EN: "Loading…", ZH: "正在加载…"}
+	TextUnreachable = family.Text{EN: "Could not reach {site}: {error}", ZH: "无法连接 {site}：{error}"}
+	TextYourReply   = family.Text{EN: "Your reply", ZH: "你的回复"}
+	TextImageOf     = family.Text{EN: "Image {n} of {count} · {name} · {size}", ZH: "图片 {n}/{count} · {name} · {size}"}
+	TextVideoOf     = family.Text{EN: "Video · {name} · {size}", ZH: "视频 · {name} · {size}"}
+	TextReportLines = family.Text{EN: "{id} ({count} log lines)", ZH: "{id}（{count} 行日志）"}
+	TextToday       = family.Text{EN: "Today", ZH: "今天"}
+	TextSendFailed  = family.Text{EN: "Not sent: {error}", ZH: "发送失败：{error}"}
 )
 
 // KindText is the reference text of a kind.
