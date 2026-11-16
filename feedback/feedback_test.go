@@ -396,6 +396,9 @@ func TestSubmitAndHistory(t *testing.T) {
 	if msg, err := m.Reply(ctx, sub.ID, "Thanks!"); err != nil || msg.Author != "user" {
 		t.Fatalf("reply: %+v %v", msg, err)
 	}
+	if h, _ := m.Refresh(ctx); h[0].Unread() || m.Unread() != 0 {
+		t.Errorf("own reply counted unread: %+v", h[0])
+	}
 	if !strings.HasPrefix(m.WebURL(), site.srv.URL+"/feedback?app=dicta&lang=zh-Hans&v=1.0.0") {
 		t.Errorf("web url: %s", m.WebURL())
 	}
@@ -427,6 +430,16 @@ func TestFallbackExpiryAndMissing(t *testing.T) {
 		t.Fatalf("fallback: %v %v", err, site.calls)
 	}
 	site.directDown = false
+
+	// No direct URL at all (a site without presign credentials): the
+	// fallback with the token, not a bare PUT.
+	site.noDirect = true
+	before := site.count("PUT /api/feedback/v1/upload/")
+	sub, err = m.Submit(ctx, Draft{Kind: KindIdea, Body: "Through the site only", Email: "a@example.com", Images: []string{img}})
+	if err != nil || site.count("PUT /api/feedback/v1/upload/") != before+1 {
+		t.Fatalf("no direct: %v %v", err, site.calls)
+	}
+	site.noDirect = false
 
 	// An expired URL: new ones are asked for.
 	site.expireFirst = 1

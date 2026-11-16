@@ -227,6 +227,14 @@ func (p *progressReader) Read(b []byte) (int, error) {
 // the site on a network failure). progress gets the bytes sent (it may go
 // back to 0 when the fallback starts again).
 func (c *Client) Put(ctx context.Context, u Upload, viewToken, path string, f File, progress func(sent int64)) error {
+	fallback := func() error {
+		h := map[string]string{"content-type": f.MIME, "authorization": "Feedback " + viewToken, "x-feedback-sha256": f.SHA256}
+		return c.put(ctx, http.MethodPut, u.FallbackURL, h, path, f, progress)
+	}
+	// No direct URL (the site has no presign credentials): through the site.
+	if u.FallbackURL != "" && (u.URL == "" || u.URL == u.FallbackURL) {
+		return fallback()
+	}
 	err := c.put(ctx, u.Method, u.URL, u.Headers, path, f, progress)
 	if err == nil || u.FallbackURL == "" || !errors.Is(err, ErrNetwork) {
 		return err
@@ -234,8 +242,7 @@ func (c *Client) Put(ctx context.Context, u Upload, viewToken, path string, f Fi
 	if progress != nil {
 		progress(0)
 	}
-	h := map[string]string{"content-type": f.MIME, "authorization": "Feedback " + viewToken, "x-feedback-sha256": f.SHA256}
-	return c.put(ctx, http.MethodPut, u.FallbackURL, h, path, f, progress)
+	return fallback()
 }
 
 func (c *Client) put(ctx context.Context, method, target string, headers map[string]string, path string, f File, progress func(int64)) error {

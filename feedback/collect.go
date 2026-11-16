@@ -74,13 +74,17 @@ type CollectConfig struct {
 	ProblemLines int
 	// Settings returns the app's settings as JSON, already without
 	// secrets and the user's own words (the apps' diagnostic bundle has
-	// it). Optional.
+	// it). Optional. Settings and Extra are called from the goroutine
+	// running Submit or Diagnostics, not the UI thread: an app whose state
+	// lives on the UI thread hands them a snapshot.
 	Settings func() json.RawMessage
 	// Extra returns lines the app adds ("Engine": "1.2 (ready)",
 	// "Loaded models": …). Optional.
 	Extra func() map[string]string
-	// Scrub is the app's own redaction of a line, after redact.Text and
-	// redact.Personal (Inboxly: subjects; Dicta: transcript text).
+	// Scrub is the app's own redaction of a log line (the tails, the
+	// problems, the crash), after redact.Text and redact.Personal
+	// (Inboxly: subjects; Dicta: transcript text). Settings and Extra do
+	// not go through it.
 	Scrub func(string) string
 	// Personal: who to mask (redact.ThisUser() when zero).
 	Personal *redact.Personal
@@ -140,8 +144,12 @@ func Collect(cfg CollectConfig, app AppInfo, now time.Time) Diagnostics {
 	if cfg.Personal != nil {
 		pers = *cfg.Personal
 	}
+	// Settings and Extra come from the app already without its users'
+	// words: they get the secret and personal rules only; Scrub is for
+	// the log lines.
+	base := func(s string) string { return pers.Text(redact.Text(s)) }
 	clean := func(s string) string {
-		s = pers.Text(redact.Text(s))
+		s = base(s)
 		if cfg.Scrub != nil {
 			s = cfg.Scrub(s)
 		}
@@ -150,12 +158,12 @@ func Collect(cfg CollectConfig, app AppInfo, now time.Time) Diagnostics {
 	if cfg.Extra != nil {
 		d.Extra = map[string]string{}
 		for k, v := range cfg.Extra() {
-			d.Extra[k] = clean(v)
+			d.Extra[k] = base(v)
 		}
 	}
 	if cfg.Settings != nil {
 		if raw := cfg.Settings(); len(raw) > 0 && json.Valid(raw) {
-			s := clean(string(raw))
+			s := base(string(raw))
 			if json.Valid([]byte(s)) {
 				d.Settings = json.RawMessage(s)
 			}

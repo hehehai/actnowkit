@@ -25,6 +25,7 @@ type fakeSite struct {
 	calls  []string
 	// knobs
 	directDown   bool          // the bucket cannot be reached (network error)
+	noDirect     bool          // no presign credentials: url is the fallback
 	expireFirst  int           // the first n direct PUTs answer 403 (expired)
 	failCreate   int           // the first n creates answer 500
 	rateLimited  bool          // create answers 429 rate_limited
@@ -218,6 +219,9 @@ func (f *fakeSite) uploads(it *fakeItem) []Upload {
 			continue
 		}
 		direct := f.srv.URL + "/bucket/" + id + "?X-Amz-Signature=abc&exp=" + fmt.Sprint(f.now().Add(f.urlTTL).Unix())
+		if f.noDirect {
+			direct = f.srv.URL + "/api/feedback/v1/upload/" + id
+		}
 		if f.directDown {
 			direct = "http://127.0.0.1:1/bucket/" + id + "?X-Amz-Signature=abc"
 		}

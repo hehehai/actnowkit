@@ -115,6 +115,7 @@ type Manager struct {
 
 	sendMu sync.Mutex // one send at a time
 	histMu sync.Mutex
+	hist   []HistoryEntry // history.json in memory (histMu)
 }
 
 // New makes a Manager; it touches neither the disk nor the network.
@@ -226,7 +227,9 @@ func (m *Manager) Identity(ctx context.Context) (Identity, error) {
 	return who, nil
 }
 
-// ForgetIdentity drops the cached answer (the licence changed).
+// ForgetIdentity drops the cached answer: call it when the licence
+// changes (activated, removed), else the old answer stays for the
+// Manager's life.
 func (m *Manager) ForgetIdentity() {
 	m.mu.Lock()
 	m.who = nil
@@ -560,7 +563,8 @@ func (m *Manager) loadPending() []Submission {
 	return out
 }
 
-// Pending is the outbox now.
+// Pending is the outbox now (read from disk: call it to fill the UI before
+// Resume has run; State.Pending follows afterwards).
 func (m *Manager) Pending() []Submission { return m.loadPending() }
 
 // Resume sends the submissions a previous run left (not the rejected

@@ -37,6 +37,9 @@ const MaxHistory = 200
 func (m *Manager) historyPath() string { return filepath.Join(m.cfg.Dir, "history.json") }
 
 func (m *Manager) loadHistory() []HistoryEntry {
+	if m.hist != nil {
+		return append([]HistoryEntry(nil), m.hist...)
+	}
 	var h historyFile
 	if err := family.Load(m.historyPath(), HistoryKind, 1, &h); err != nil {
 		var ce *family.CorruptError
@@ -45,7 +48,8 @@ func (m *Manager) loadHistory() []HistoryEntry {
 		}
 		return nil
 	}
-	return h.Items
+	m.hist = h.Items
+	return append([]HistoryEntry(nil), h.Items...)
 }
 
 func (m *Manager) saveHistory(items []HistoryEntry) error {
@@ -53,7 +57,12 @@ func (m *Manager) saveHistory(items []HistoryEntry) error {
 	if len(items) > MaxHistory {
 		items = items[:MaxHistory]
 	}
-	return family.WriteJSON(m.historyPath(), historyFile{Schema: family.SchemaOf(HistoryKind, 1), Items: items})
+	if err := family.WriteJSON(m.historyPath(), historyFile{Schema: family.SchemaOf(HistoryKind, 1), Items: items}); err != nil {
+		m.hist = nil
+		return err
+	}
+	m.hist = append([]HistoryEntry(nil), items...)
+	return nil
 }
 
 // remember adds or replaces an entry.
@@ -71,7 +80,8 @@ func (m *Manager) remember(e HistoryEntry) error {
 	return m.saveHistory(append(items, e))
 }
 
-// History is this Mac's feedback, newest first, as last refreshed.
+// History is this Mac's feedback, newest first, as last refreshed (from
+// memory after the first read: cheap enough for the UI thread).
 func (m *Manager) History() []HistoryEntry {
 	m.histMu.Lock()
 	defer m.histMu.Unlock()
@@ -168,7 +178,21 @@ func (m *Manager) Reply(ctx context.Context, id, body string) (Message, error) {
 	if !ok {
 		return Message{}, os.ErrNotExist
 	}
-	return m.client.Reply(ctx, e.Ref(), body)
+	msg, err := m.client.Reply(ctx, e.Ref(), body)
+	if err != nil {
+		return msg, err
+	}
+	// The user's own message is not unread.
+	m.histMu.Lock()
+	defer m.histMu.Unlock()
+	items := m.loadHistory()
+	for i := range items {
+		if items[i].ID == id {
+			items[i].Messages++
+			items[i].SeenMessages = max(items[i].SeenMessages+1, items[i].Messages)
+		}
+	}
+	return msg, m.saveHistory(items)
 }
 
 // Forget removes an entry from this Mac's history (the site keeps it).
