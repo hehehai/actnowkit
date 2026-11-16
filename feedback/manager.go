@@ -113,6 +113,10 @@ type Manager struct {
 	next  int
 	who   *Identity
 
+	seq       uint64     // the state's version (mu)
+	notifyMu  sync.Mutex // subscribers are called in order
+	delivered uint64     // the last version delivered (notifyMu)
+
 	sendMu sync.Mutex // one send at a time
 	histMu sync.Mutex
 	hist   []HistoryEntry // history.json in memory (histMu)
@@ -172,7 +176,9 @@ func (m *Manager) State() State {
 	return m.state
 }
 
-// Subscribe calls fn on every change (from the goroutine making it).
+// Subscribe calls fn on every change, from the goroutine making it, in
+// order (an older state is never delivered after a newer one); fn must not
+// call back into the Manager's setters.
 func (m *Manager) Subscribe(fn func(State)) (unsubscribe func()) {
 	m.mu.Lock()
 	id := m.next
@@ -190,11 +196,22 @@ func (m *Manager) set(update func(*State)) {
 	m.mu.Lock()
 	update(&m.state)
 	st := m.state
+	m.seq++
+	seq := m.seq
 	fns := make([]func(State), 0, len(m.subs))
 	for _, fn := range m.subs {
 		fns = append(fns, fn)
 	}
 	m.mu.Unlock()
+	// Updates come from several goroutines (the upload's progress from the
+	// HTTP client's): a subscriber never gets an older state after a newer
+	// one ("sending" after "sent").
+	m.notifyMu.Lock()
+	defer m.notifyMu.Unlock()
+	if seq < m.delivered {
+		return
+	}
+	m.delivered = seq
 	for _, fn := range fns {
 		fn(st)
 	}
@@ -462,7 +479,11 @@ func (m *Manager) sendOnce(ctx context.Context, sub *Submission) error {
 			}
 			base := m.State().SentBytes
 			err := m.client.Put(ctx, u, sub.ViewToken, filepath.Join(dir, f.Name), *f, func(sent int64) {
-				m.set(func(s *State) { s.SentBytes = base + sent })
+				m.set(func(s *State) {
+					if s.Phase == Sending {
+						s.SentBytes = base + sent
+					}
+				})
 			})
 			var api *APIError
 			if errors.As(err, &api) && api.Code == "upload_expired" && !refreshed {
