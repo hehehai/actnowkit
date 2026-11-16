@@ -527,6 +527,25 @@ func TestNewChecksBase(t *testing.T) {
 	}
 }
 
+func TestLastCrash(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "crash.log")
+	cases := map[string]string{
+		// The running session's line comes last, with nothing after it.
+		"=== Refto 0.1 pid 1 ===\npanic: boom\n\ngoroutine 1:\nmain.main()\n=== Refto 0.1 pid 2 ===\n": "=== Refto 0.1 pid 1 ===\npanic: boom\n\ngoroutine 1:\nmain.main()",
+		"=== a ===\n=== b ===\n":           "",
+		"panic: old\nx\n":                  "panic: old\nx",
+		"":                                 "",
+		"=== a ===\nfatal error: maps\n\n": "=== a ===\nfatal error: maps",
+	}
+	for in, want := range cases {
+		os.WriteFile(p, []byte(in), 0o600)
+		if got := lastCrash(p); got != want {
+			t.Errorf("lastCrash(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestExifOrientationBounds(t *testing.T) {
 	for _, b := range [][]byte{nil, {0xFF, 0xD8}, {0xFF, 0xD8, 0xFF, 0xE1, 0x00, 0x01}, {0xFF, 0xD8, 0xFF, 0xE1, 0xFF, 0xFF, 'E'}} {
 		if o := exifOrientation(b); o != 1 {

@@ -307,28 +307,51 @@ func tailLines(path string, n, maxBytes int) (lines []string, cut bool, err erro
 	return all, cut, nil
 }
 
-// lastCrash is the last report of a crash.log: from the last line naming
-// a session (the apps' crashlog writes "=== <time> <app> <version> …")
-// or the last "panic:"/"fatal error:", at most 64 KB.
+// lastCrash is the last report of a crash.log. The apps' crashlog writes
+// a line naming each session ("=== <app> <version> … ===") before it runs
+// (the running session's line has nothing after it), and the runtime
+// writes the trace after it: the report is the last such section with
+// content, or, in a file without session lines, from the last "panic:" or
+// "fatal error:". At most 64 KB.
 func lastCrash(path string) string {
 	lines, _, err := tailLines(path, 4000, 256<<10)
 	if err != nil || len(lines) == 0 {
 		return ""
 	}
-	start := -1
+	hasContent := func(ls []string) bool {
+		for _, l := range ls {
+			if strings.TrimSpace(l) != "" {
+				return true
+			}
+		}
+		return false
+	}
+	end := len(lines)
+	found := -1
 	for i := len(lines) - 1; i >= 0; i-- {
-		l := lines[i]
-		if strings.HasPrefix(l, "===") || strings.HasPrefix(l, "panic:") || strings.HasPrefix(l, "fatal error:") {
-			start = i
-			if strings.HasPrefix(l, "===") {
+		if !strings.HasPrefix(lines[i], "===") {
+			continue
+		}
+		if hasContent(lines[i+1 : end]) {
+			found = i
+			break
+		}
+		end = i // an empty section (a session that did not crash, or this one)
+	}
+	if found < 0 {
+		// No session lines with a report after them: the last panic in the
+		// lines before the first empty section, if any.
+		for i := end - 1; i >= 0; i-- {
+			if strings.HasPrefix(lines[i], "panic:") || strings.HasPrefix(lines[i], "fatal error:") {
+				found = i
 				break
 			}
 		}
+		if found < 0 {
+			return ""
+		}
 	}
-	if start < 0 {
-		start = 0
-	}
-	s := strings.Join(lines[start:], "\n")
+	s := strings.TrimRight(strings.Join(lines[found:end], "\n"), "\n ")
 	if len(s) > 64<<10 {
 		s = s[:64<<10] + "\n…"
 	}
