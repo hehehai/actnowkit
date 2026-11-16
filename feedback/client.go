@@ -9,10 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -74,11 +76,29 @@ func checkBase(base string) error {
 	return fmt.Errorf("feedback: %s: the feedback site needs https", base)
 }
 
+// readOnly endpoints change nothing on the site: a request that failed on
+// the connection may be sent again.
+var readOnly = map[string]bool{"identity": true, "uploads": true, "list": true, "get": true}
+
 func (c *Client) post(ctx context.Context, endpoint string, body, out any) error {
 	b, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
+	for attempt := 0; ; attempt++ {
+		err := c.postOnce(ctx, endpoint, b, out)
+		// Go's client retries a GET on a reused connection the server closed,
+		// never a POST: a read-only call gets one more try of its own (an
+		// idle keep-alive connection a proxy or the site dropped: EOF,
+		// connection reset).
+		if err != nil && attempt == 0 && readOnly[endpoint] && ctx.Err() == nil && connectionLost(err) {
+			continue
+		}
+		return err
+	}
+}
+
+func (c *Client) postOnce(ctx context.Context, endpoint string, b []byte, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.BaseURL, "/")+"/api/feedback/v1/"+endpoint, bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -87,10 +107,34 @@ func (c *Client) post(ctx context.Context, endpoint string, body, out any) error
 	req.Header.Set("user-agent", "actnowkit-feedback "+c.App+"/"+c.Version)
 	resp, err := c.http().Do(req)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrNetwork, err)
+		return &netError{err}
 	}
 	defer resp.Body.Close()
 	return decodeAnswer(resp, out)
+}
+
+// netError is ErrNetwork with the transport's error kept for connectionLost.
+type netError struct{ err error }
+
+func (e *netError) Error() string   { return fmt.Sprintf("%v: %v", ErrNetwork, e.err) }
+func (e *netError) Is(t error) bool { return t == ErrNetwork }
+func (e *netError) Unwrap() error   { return e.err }
+
+// connectionLost: the connection ended under the request (EOF, reset,
+// broken pipe, a closed idle connection), not a refusal, a timeout or an
+// answer.
+func connectionLost(err error) bool {
+	var ne *netError
+	if !errors.As(err, &ne) {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNABORTED) || errors.Is(err, net.ErrClosed) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "server closed idle connection") || strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "broken pipe") || strings.HasSuffix(msg, "EOF")
 }
 
 func decodeAnswer(resp *http.Response, out any) error {

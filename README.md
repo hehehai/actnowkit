@@ -26,7 +26,7 @@ package checks either.
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.21.0
+go get github.com/hehehai/actnowkit@v0.21.1
 go mod tidy   # adds purego (only the darwin files import it) and, with lang, golang.org/x/text
 ```
 

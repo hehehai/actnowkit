@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.21.1 — 2026-11-16
+
+A fix: code written for v0.21.0 builds and behaves as before.
+
+- `feedback`: the read-only calls (`Identity`, `List`, `Get`, the fresh
+  upload URLs) are sent once more when the connection ends under them (EOF,
+  connection reset, broken pipe, an idle keep-alive connection the site or
+  a proxy closed). Go's HTTP client retries such a GET by itself, never a
+  POST, and the protocol's calls are POSTs: on a Mac whose proxy drops
+  idle connections, `Identity` failed with EOF and the form fell back to
+  "email required" for a licensed user. Calls that change something
+  (create, complete, reply, uploads of files) are never sent twice here;
+  the Manager's own retries cover them. A refused connection or a timeout
+  is not retried.
+
 ## v0.21.0 — 2026-11-16
 
 In-app feedback: a new package, and a new function in `redact`; code
