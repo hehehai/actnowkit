@@ -22,11 +22,11 @@ package checks either.
   apps to put in their own catalogues; `i18n` is the catalogue code the
   apps share (their messages stay in the app).
   `updates` takes MyGo's updater as two functions.
-- Status: **v0.19** — `hfhub` is experimental; the other packages follow the
+- Status: **v0.20** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.19.0
+go get github.com/hehehai/actnowkit@v0.20.0
 go mod tidy   # adds purego (only the darwin files import it) and, with lang, golang.org/x/text
 ```
 

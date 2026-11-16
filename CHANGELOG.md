@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.20.0 — 2026-11-16
 
 A 15-day free trial for the apps that sell a licence, per app and per Mac,
 counted from the first launch and needing no code. Nothing else changed; the
