@@ -174,6 +174,10 @@ func TestServerTrialExpiredIs403AndFinal(t *testing.T) {
 	if st.Token != nil {
 		t.Fatal("a token after trial_expired")
 	}
+	// The server's start (its error "details") replaces the Mac's.
+	if rec, _ := h.trials.LoadTrial(); rec.StartedAt != h.now.Add(-16*day).Unix() || !rec.ServerEnded {
+		t.Fatalf("record %+v", rec)
+	}
 	// Final: offline or with the clock back, it stays ended.
 	h.server.set(func(f *fakeServer) { f.down = true })
 	h.now = h.now.Add(-5 * day)
@@ -345,4 +349,19 @@ func TestTrialOff(t *testing.T) {
 	}
 	h.server.addCode("CC-NT", EditionPaid, 2, nil)
 	expectState(t, h.activate("CC-NT"), Valid, "", true)
+}
+
+// A site that sends trial_expired's start in "data" (refto.one) instead of
+// "details" (actnow.dev): read the same.
+func TestServerTrialExpiredData(t *testing.T) {
+	h := newHarness(t, "0.3.0")
+	start := h.now.Add(-20 * day)
+	h.server.set(func(f *fakeServer) {
+		f.trials = map[string]time.Time{"captioncraft|" + h.device: start}
+		f.expiredInData = true
+	})
+	expectTrial(t, h.client.Check(context.Background()), TrialExpired, ReasonTrialEnded, false)
+	if rec, _ := h.trials.LoadTrial(); rec.StartedAt != start.Unix() || !rec.ServerEnded {
+		t.Fatalf("record %+v", rec)
+	}
 }

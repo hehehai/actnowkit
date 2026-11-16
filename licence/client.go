@@ -236,7 +236,8 @@ type APIError struct {
 	Code       string
 	Message    string
 	Details    json.RawMessage
-	// Data: the answer's "data" (trial_expired carries startedAt and endsAt).
+	// Data: the answer's "data", if any (a trial_expired answer carries
+	// startedAt and endsAt in "details" or "data").
 	Data json.RawMessage
 }
 

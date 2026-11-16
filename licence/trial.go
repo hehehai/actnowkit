@@ -258,7 +258,13 @@ func (c *Client) StartTrial(ctx context.Context) (Status, error) {
 			var d struct {
 				StartedAt time.Time `json:"startedAt"`
 			}
-			if json.Unmarshal(api.Data, &d) == nil && !d.StartedAt.IsZero() {
+			// The site's error body carries it in "details" (actnow.dev) or
+			// "data" (either is read).
+			raw := api.Details
+			if len(api.Data) > 0 {
+				raw = api.Data
+			}
+			if json.Unmarshal(raw, &d) == nil && !d.StartedAt.IsZero() {
 				tr.StartedAt = d.StartedAt.Unix()
 			}
 			tr.ServerEnded = true

@@ -32,6 +32,8 @@ type fakeServer struct {
 	wrongDevice bool
 	requests    []string
 	trialOff    bool // answer 403 trial_unavailable
+	// expiredInData: trial_expired's start in "data", not "details".
+	expiredInData bool
 	// trials: the first launch the server knows, per app and device.
 	trials map[string]time.Time
 }
@@ -180,7 +182,11 @@ func (f *fakeServer) handle(w http.ResponseWriter, r *http.Request) {
 		if !f.now.Before(ends) {
 			w.WriteHeader(http.StatusForbidden)
 			details := map[string]any{"startedAt": start.Format(time.RFC3339), "endsAt": ends.Format(time.RFC3339)}
-			_ = json.NewEncoder(w).Encode(map[string]any{"error": "trial_expired", "message": "trial_expired", "details": details})
+			field := "details"
+			if f.expiredInData {
+				field = "data"
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": "trial_expired", "message": "trial_expired", field: details})
 			return
 		}
 		iat := f.now.Unix()
