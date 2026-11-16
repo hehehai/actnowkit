@@ -117,6 +117,9 @@ type Manager struct {
 	notifyMu  sync.Mutex // subscribers are called in order
 	delivered uint64     // the last version delivered (notifyMu)
 
+	stepMu sync.Mutex
+	steps  []Step // the recent actions (Step)
+
 	sendMu sync.Mutex // one send at a time
 	histMu sync.Mutex
 	hist   []HistoryEntry // history.json in memory (histMu)
@@ -313,6 +316,9 @@ func (m *Manager) Submit(ctx context.Context, d Draft) (*Submission, error) {
 		App: m.cfg.App, Version: m.cfg.Version, Build: m.cfg.Build, Channel: m.cfg.Channel, Locale: m.locale(),
 		Kind: d.Kind, Body: strings.TrimSpace(d.Body), Email: strings.TrimSpace(d.Email), State: SendQueued,
 	}
+	if d.Report != nil && d.IncludeReport {
+		sub.Context = d.Report.Context()
+	}
 	m.set(func(s *State) { *s = State{Phase: Preparing, Step: "prepare", Current: sub, Pending: s.Pending} })
 	dir := filepath.Join(m.outboxDir(), sub.LocalID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -347,8 +353,20 @@ func (m *Manager) prepare(ctx context.Context, sub *Submission, d Draft, dir str
 		}
 		sub.Files = append(sub.Files, f)
 	}
-	if d.Diagnostics {
-		diag := m.Diagnostics(sub.Email)
+	withReport := d.Report != nil && d.IncludeReport
+	if d.Diagnostics || withReport {
+		var diag Diagnostics
+		if d.Diagnostics {
+			diag = m.Diagnostics(sub.Email)
+		} else {
+			// The report alone: the user turned diagnostics off.
+			diag = Diagnostics{Schema: DiagnosticsSchema, CollectedAt: m.cfg.Now().UTC(),
+				App: AppInfo{ID: m.cfg.App, Version: m.cfg.Version, Build: m.cfg.Build, Channel: m.cfg.Channel}}
+		}
+		if withReport {
+			diag.Report = d.Report
+			diag.fit(MaxDiagnosticsBytes)
+		}
 		data, err := json.Marshal(diag)
 		if err != nil {
 			return err
@@ -430,7 +448,7 @@ func (m *Manager) sendOnce(ctx context.Context, sub *Submission) error {
 		step("create")
 		req := CreateRequest{
 			App: sub.App, Version: sub.Version, Build: sub.Build, Channel: sub.Channel, Locale: sub.Locale,
-			Kind: sub.Kind, Body: sub.Body, Email: sub.Email, LicenceToken: m.licenceToken(), System: sub.System,
+			Kind: sub.Kind, Body: sub.Body, Email: sub.Email, LicenceToken: m.licenceToken(), System: sub.System, Context: sub.Context,
 		}
 		if m.cfg.DeviceID != nil {
 			req.DeviceID = m.cfg.DeviceID()

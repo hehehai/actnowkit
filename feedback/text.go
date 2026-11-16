@@ -15,7 +15,7 @@ var (
 	TextKind            = family.Text{EN: "Type", ZH: "类型"}
 	TextKindBug         = family.Text{EN: "Problem", ZH: "问题"}
 	TextKindIdea        = family.Text{EN: "Suggestion", ZH: "建议"}
-	TextKindQuestion    = family.Text{EN: "Question", ZH: "咨询"}
+	TextKindQuestion    = family.Text{EN: "Question", ZH: "提问"}
 	TextKindOther       = family.Text{EN: "Other", ZH: "其他"}
 	TextBody            = family.Text{EN: "Description", ZH: "描述"}
 	TextBodyPlaceholder = family.Text{
@@ -82,6 +82,38 @@ var (
 	TextProblemVideo         = family.Text{EN: "This video cannot be used: an MP4 or MOV file up to 1 GB.", ZH: "这段视频无法使用：仅支持 1 GB 以内的 MP4 或 MOV。"}
 	TextProblemVideoTooLarge = family.Text{EN: "The video is still over 20 MB after compressing: trim it and try again.", ZH: "视频压缩后仍超过 20 MB，请剪短后再试。"}
 	TextRateLimited          = family.Text{EN: "Too much feedback from this Mac for now: it will be sent later.", ZH: "短时间内提交过多，稍后会自动发送。"}
+)
+
+// The feedback window (feedbackui) and the "Report this problem" link.
+var (
+	TextWindowTitle   = family.Text{EN: "Send Feedback", ZH: "发送反馈"}
+	TextWindowSub     = family.Text{EN: "to the {app} team · {site}", ZH: "发给 {app} 团队 · {site}"}
+	TextReportTitle   = family.Text{EN: "Report this problem", ZH: "报告此问题"}
+	TextReportLink    = family.Text{EN: "Report this problem…", ZH: "报告此问题…"}
+	TextIncludeReport = family.Text{
+		EN: "Include this error report and its {count} log lines",
+		ZH: "附上这份错误报告和相关的 {count} 行日志",
+	}
+	TextContextError  = family.Text{EN: "Error", ZH: "错误"}
+	TextContextWhere  = family.Text{EN: "Where", ZH: "位置"}
+	TextContextWhen   = family.Text{EN: "When", ZH: "时间"}
+	TextContextSteps  = family.Text{EN: "Steps", ZH: "最近操作"}
+	TextContextReport = family.Text{EN: "Report", ZH: "错误报告"}
+	TextAdd           = family.Text{EN: "Add", ZH: "添加"}
+	TextAddSub        = family.Text{EN: "images or a video", ZH: "图片或视频"}
+	TextAttachCount   = family.Text{EN: "{images} of 3 images · {videos} of 1 video", ZH: "图片 {images}/3 · 视频 {videos}/1"}
+	TextRemove        = family.Text{EN: "Remove", ZH: "移除"}
+	TextOpenWith      = family.Text{EN: "Open in QuickTime Player", ZH: "用 QuickTime Player 打开"}
+	TextHistoryCount  = family.Text{EN: "Your feedback ({count})", ZH: "我的反馈（{count}）"}
+	TextCancel        = family.Text{EN: "Cancel", ZH: "取消"}
+	TextClose         = family.Text{EN: "Close", ZH: "关闭"}
+	TextViewIt        = family.Text{EN: "View it", ZH: "查看"}
+	TextSentTitle     = family.Text{EN: "Thanks — feedback sent", ZH: "感谢反馈"}
+	TextSentBody      = family.Text{
+		EN: "Your feedback {number} is with us. We reply by email and in Your feedback.",
+		ZH: "反馈 {number} 已收到，我们会通过邮件和“我的反馈”回复你。",
+	}
+	TextOpenWindow = family.Text{EN: "Open the feedback window", ZH: "打开反馈窗口"}
 )
 
 // KindText is the reference text of a kind.

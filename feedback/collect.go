@@ -113,6 +113,8 @@ type Diagnostics struct {
 	Problems []string  `json:"problems,omitempty"`
 	Logs     []LogTail `json:"logs,omitempty"`
 	Crash    string    `json:"crash,omitempty"`
+	// Report: the error report the feedback was opened with.
+	Report *Report `json:"report,omitempty"`
 }
 
 // AppInfo is the app part of Diagnostics.

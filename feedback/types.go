@@ -82,6 +82,11 @@ type Draft struct {
 	Video string
 	// Diagnostics: send diagnostics.json (the form's switch, on by default).
 	Diagnostics bool
+	// Report: the error report the window was opened with (a "Report this
+	// problem" link); IncludeReport sends it (on by default; the user may
+	// untick it). It goes in diagnostics.json and the request's context.
+	Report        *Report
+	IncludeReport bool
 }
 
 // File is a prepared attachment in the outbox.
@@ -122,16 +127,17 @@ type Submission struct {
 	LocalID   string    `json:"localId"`
 	CreatedAt time.Time `json:"createdAt"`
 
-	App     string `json:"app"`
-	Version string `json:"version"`
-	Build   string `json:"build,omitempty"`
-	Channel string `json:"channel,omitempty"`
-	Locale  string `json:"locale,omitempty"`
-	Kind    Kind   `json:"kind"`
-	Body    string `json:"body"`
-	Email   string `json:"email,omitempty"`
-	Files   []File `json:"files,omitempty"`
-	System  System `json:"system"`
+	App     string   `json:"app"`
+	Version string   `json:"version"`
+	Build   string   `json:"build,omitempty"`
+	Channel string   `json:"channel,omitempty"`
+	Locale  string   `json:"locale,omitempty"`
+	Kind    Kind     `json:"kind"`
+	Body    string   `json:"body"`
+	Email   string   `json:"email,omitempty"`
+	Files   []File   `json:"files,omitempty"`
+	System  System   `json:"system"`
+	Context *Context `json:"context,omitempty"`
 
 	// The site's answer to create.
 	ID        string `json:"id,omitempty"`

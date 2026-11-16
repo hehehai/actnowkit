@@ -205,6 +205,7 @@ type CreateRequest struct {
 	DeviceID     string           `json:"deviceId,omitempty"`
 	Source       string           `json:"source"` // "app"
 	System       System           `json:"system"`
+	Context      *Context         `json:"context,omitempty"`
 	Attachments  []AttachmentMeta `json:"attachments"`
 }
 
