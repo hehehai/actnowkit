@@ -68,6 +68,9 @@ type CollectConfig struct {
 	Logs []LogSpec
 	// CrashFile in LogDir ("crash.log"; "" for none): its last report.
 	CrashFile string
+	// CrashFiles: more crash files in LogDir (a helper's
+	// "crash-helper.log"); each one's last report is added under its name.
+	CrashFiles []string
 	// ProblemDays: how far back the warnings and errors go (0: 7).
 	ProblemDays int
 	// ProblemLines: at most this many of them (0: 300).
@@ -210,6 +213,14 @@ func Collect(cfg CollectConfig, app AppInfo, now time.Time) Diagnostics {
 		}
 		if cfg.CrashFile != "" {
 			d.Crash = clean(lastCrash(filepath.Join(cfg.LogDir, cfg.CrashFile)))
+		}
+		for _, name := range cfg.CrashFiles {
+			if c := lastCrash(filepath.Join(cfg.LogDir, name)); c != "" {
+				if d.Crash != "" {
+					d.Crash += "\n\n"
+				}
+				d.Crash += "--- " + name + " ---\n" + clean(c)
+			}
 		}
 	}
 	d.fit(MaxDiagnosticsBytes)

@@ -295,6 +295,11 @@ func TestCollect(t *testing.T) {
 	if len(d.Problems) != 2 || !strings.Contains(d.Problems[0], "proxy") || !strings.Contains(d.Problems[1], "evil.example") {
 		t.Errorf("problems: %q", d.Problems)
 	}
+	os.WriteFile(filepath.Join(dir, "crash-helper.log"), []byte("panic: helper died\n"), 0o600)
+	dh := Collect(CollectConfig{LogDir: dir, CrashFile: "crash.log", CrashFiles: []string{"crash-helper.log", "none.log"}, Personal: &pers}, AppInfo{ID: "dicta"}, now)
+	if !strings.Contains(dh.Crash, "--- crash-helper.log ---\npanic: helper died") || !strings.HasPrefix(dh.Crash, "=== 2026-11-15") {
+		t.Errorf("crash files: %q", dh.Crash)
+	}
 	if !strings.HasPrefix(d.Crash, "=== 2026-11-15") || !strings.Contains(d.Crash, "~/src/main.go") {
 		t.Errorf("crash: %q", d.Crash)
 	}
