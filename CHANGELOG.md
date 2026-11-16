@@ -6,6 +6,11 @@ A 15-day free trial for the apps that sell a licence, per app and per Mac,
 counted from the first launch and needing no code. Nothing else changed; the
 code's states and API behave as before (the trial states are new values).
 
+- `licence`: `Config.Trial` turns the trial on, per app. Off (the zero
+  value), a client behaves as before: no code means `Inactive`, no trial
+  record is written and the trial endpoint is never called. Only the paid
+  apps the site offers a trial for set it.
+
 - `licence`: `StartTrial(ctx)` asks the site for the Mac's trial token
   (`POST /api/licence/v1/trial`, `{app, dev, version, startedAt}`), called by
   `Check` while a trial is wanted. The trial token is stored like a code's

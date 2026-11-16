@@ -224,7 +224,7 @@ func (c *Client) StartTrial(ctx context.Context) (Status, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	st := c.statusLocked()
-	if !st.needsTrialCall() {
+	if !c.cfg.Trial || !st.needsTrialCall() {
 		return st, nil
 	}
 	device, err := c.cfg.DeviceID()

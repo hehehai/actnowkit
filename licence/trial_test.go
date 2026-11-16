@@ -317,3 +317,32 @@ func TestTrialUnavailableLocksThisRunOnly(t *testing.T) {
 	h.client = h.newClient("0.3.0")
 	expectTrial(t, h.client.Check(context.Background()), TrialValid, "", true)
 }
+
+// An app without Config.Trial: no trial record, no trial call, Inactive
+// with no code (as before the trial), and a code works as usual.
+func TestTrialOff(t *testing.T) {
+	h := newHarness(t, "0.3.0")
+	h.noTrial = true
+	h.client = h.newClient("0.3.0")
+	st := h.client.Check(context.Background())
+	if st.State != Inactive || st.IsTrial() || st.Usable {
+		t.Fatalf("no trial: %v %q", st.State, st.Reason)
+	}
+	if _, err := h.trials.LoadTrial(); err != ErrNoTrial {
+		t.Fatalf("a trial record was written: %v", err)
+	}
+	if st, err := h.client.StartTrial(context.Background()); err != nil || st.State != Inactive {
+		t.Fatalf("StartTrial without Trial: %v %v", st.State, err)
+	}
+	for _, p := range h.server.requests {
+		if p == TrialPath {
+			t.Fatal("the trial endpoint was called")
+		}
+	}
+	h.advance(20 * day)
+	if st := h.client.Status(); st.State != Inactive {
+		t.Fatalf("after 20 days: %v", st.State)
+	}
+	h.server.addCode("CC-NT", EditionPaid, 2, nil)
+	expectState(t, h.activate("CC-NT"), Valid, "", true)
+}

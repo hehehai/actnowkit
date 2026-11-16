@@ -22,9 +22,11 @@ type harness struct {
 	server *fakeServer
 	store  *MemoryStore
 	trials TrialStore
-	now    time.Time
-	device string
-	client *Client
+	// noTrial: the app has no trial (Config.Trial false).
+	noTrial bool
+	now     time.Time
+	device  string
+	client  *Client
 }
 
 func newHarness(t *testing.T, version string) *harness {
@@ -42,6 +44,7 @@ func (h *harness) newClient(version string) *Client {
 		DeviceSalt: testSalt,
 		Keys:       h.server.keys(),
 		Store:      h.store,
+		Trial:      !h.noTrial,
 		TrialStore: h.trials,
 		BaseURL:    h.server.srv.URL,
 		Now:        func() time.Time { return h.now },

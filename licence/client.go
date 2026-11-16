@@ -51,8 +51,14 @@ type Config struct {
 	DeviceID func() (string, error)
 	// Device: ThisDevice.
 	Device func() DeviceInfo
+	// Trial turns on the 15-day free trial for this app (a paid app the site
+	// offers a trial for). Off: no trial at all, as before v0.20.0: with no
+	// code the app is Inactive, no trial record is written and the trial
+	// endpoint is never called.
+	Trial bool
 	// TrialStore keeps the trial record (first launch); nil: the Keychain
-	// item "actnow.trial" of the app (NewKeychainTrialStore).
+	// item "actnow.trial" of the app (NewKeychainTrialStore). Used only with
+	// Trial.
 	TrialStore TrialStore
 }
 
@@ -137,7 +143,8 @@ func (c *Client) Status() Status {
 	return c.statusLocked()
 }
 
-// statusLocked decides the state. A stored code decides alone: valid →
+// statusLocked decides the state. Without Config.Trial, the code alone (as
+// before the trial existed). With it: a stored code decides alone: valid →
 // licensed; otherwise its own state (expired, revoked, removed…), with no
 // trial, so a refused code cannot reopen one. With no code stored, the trial
 // applies: its token, else the Mac's own record while it is within 15 days.
@@ -159,6 +166,19 @@ func (c *Client) statusLocked() Status {
 		Version:   c.cfg.Version,
 		PaidSince: c.cfg.PaidSince,
 		Now:       now,
+	}
+	if !c.cfg.Trial {
+		// No trial for this app: the code alone (Inactive without one).
+		st, update := evaluate(in)
+		if update != nil {
+			_ = c.cfg.Store.Save(*update)
+		}
+		if st.Token != nil {
+			st.ManageURL = c.ManageURL(st.Token.CodeID)
+		} else {
+			st.ManageURL = c.ManageURL("")
+		}
+		return st
 	}
 	tr, trChanged := c.trialRecordLocked(now)
 	if trChanged {
