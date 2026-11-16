@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.21.0 — 2026-11-16
+
+In-app feedback: a new package, and a new function in `redact`; code
+written for v0.20 builds and behaves as before.
+
+- New package `feedback`: the apps' Settings → Feedback without the UI.
+  The protocol of actnow.dev and refto.one (`/api/feedback/v1/`: identity,
+  create, uploads, complete, list, get, reply; files PUT straight to the
+  storage bucket with a fallback through the site); `Validate` (kind,
+  description, email required unless the licence code's owner is known,
+  at most 3 images and 1 video); `PrepareImage` (PNG/JPEG/GIF in Go,
+  HEIC/WebP/TIFF/BMP through macOS's `sips`; EXIF orientation applied,
+  every metadata dropped, scaled to 3840 px, PNG kept for screenshots that
+  fit, else JPEG, at most 5 MB); `PrepareVideo` (MP4/MOV up to 20 MB as
+  they are, larger ones compressed with macOS's `avconvert`, whose
+  metadata filter drops the location); `Collect` (diagnostics.json: this
+  Mac without names or serials, the app, its settings and extra lines as
+  the app gives them, the newest log lines, the warnings and errors of the
+  last 7 days from the rotated logs, the last crash; every line through
+  `redact.Text`, `redact.Personal` and the app's own scrub; at most 2 MB);
+  `Manager` (state for the UI, `Submit` into an outbox that survives
+  quitting and going offline, retries, `Resume`, `Retry`, `Discard`; the
+  history of this Mac's feedback with statuses, unread replies, `Thread`,
+  `Reply`; `WebURL` of the site's form); reference texts `Text*`.
+- `redact`: `Personal` masks what identifies the person in text sent away
+  (the home folder → `~`, `/Users/<name>`, the user's and the Mac's names,
+  email addresses `a***@domain`, IPv4 `203.0.x.x`, IPv6), `ThisUser` fills
+  it for the running user.
 ## v0.20.0 — 2026-11-16
 
 A 15-day free trial for the apps that sell a licence, per app and per Mac,
