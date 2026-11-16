@@ -14,8 +14,11 @@ var (
 	TextCodePlaceholder = family.Text{EN: "CC-XXXXXX-XXXXXX-XXXXXX-XXXXXX", ZH: "CC-XXXXXX-XXXXXX-XXXXXX-XXXXXX"}
 	TextActivate        = family.Text{EN: "Activate", ZH: "激活"}
 	TextRequestAccess   = family.Text{EN: "Request early access", ZH: "申请体验资格"}
-	TextHowItWorks      = family.Text{EN: "How activation works", ZH: "激活说明"}
-	TextManageOnline    = family.Text{EN: "Manage on actnow.dev", ZH: "在 actnow.dev 管理"}
+	// TextBuyLicence: the button that opens the app's page to buy a licence
+	// (the trial's end, the activation page), in place of TextRequestAccess.
+	TextBuyLicence   = family.Text{EN: "Buy a licence", ZH: "购买授权"}
+	TextHowItWorks   = family.Text{EN: "How activation works", ZH: "激活说明"}
+	TextManageOnline = family.Text{EN: "Manage on actnow.dev", ZH: "在 actnow.dev 管理"}
 	// TextRemoveThisMac: the app's Remove button only opens the site.
 	TextRemoveThisMac = family.Text{EN: "Remove a Mac…", ZH: "移除设备…"}
 	TextRemoveHint    = family.Text{

@@ -29,6 +29,8 @@ code's states and API behave as before (the trial states are new values).
   end) is kept in the Keychain as `actnow.trial`/<app slug>
   (`NewKeychainTrialStore`, `Config.TrialStore`); time uses the protocol's
   now* rule, so turning the clock back does not extend the trial.
+- `TextBuyLicence` ("Buy a licence" / "购买授权"), the activation page's
+  button in place of `TextRequestAccess` (kept for older builds).
 - `APIError.Data` carries the answer's `data` (trial_expired's startedAt
   and endsAt).
 
