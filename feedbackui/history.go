@@ -274,6 +274,24 @@ func (w *Window) HistoryPanel(c *ui.Context) ui.Element {
 // its context card, the report included). rep is from Manager.Capture;
 // nil opens the window as Send Feedback does.
 func ReportLink(c *ui.Context, w *Window, rep *feedback.Report) ui.Element {
+	return reportLink(c, w, func() { w.Open(feedback.Prefill{Kind: feedback.KindBug, Report: rep}) })
+}
+
+// ReportLinkFunc is ReportLink that captures the report only when the link
+// is clicked (off the UI thread, through Options.Async): a list showing
+// many failures draws its links without reading the log or writing a
+// report for each. capture runs once per click; a nil report opens the
+// window without one.
+func ReportLinkFunc(c *ui.Context, w *Window, capture func() *feedback.Report) ui.Element {
+	return reportLink(c, w, func() {
+		w.async(func() {
+			rep := capture()
+			w.post(func() { w.Open(feedback.Prefill{Kind: feedback.KindBug, Report: rep}) })
+		})
+	})
+}
+
+func reportLink(c *ui.Context, w *Window, open func()) ui.Element {
 	f := w.frame(c)
 	label := w.tx(w.texts.ReportLink)
 	b := ui.ButtonBase(c).Padding(0).Role(ui.RoleLink).Label(label).Shrink(0)
@@ -281,7 +299,7 @@ func ReportLink(c *ui.Context, w *Window, rep *feedback.Report) ui.Element {
 		ui.Text(c, label).FontSize(f.fs - 1).TextColor(f.p.Accent).NoWrap()
 	})
 	if b.Clicked() {
-		w.Open(feedback.Prefill{Kind: feedback.KindBug, Report: rep})
+		open()
 	}
 	return b
 }

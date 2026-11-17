@@ -492,6 +492,35 @@ func TestReportLinkAndPanel(t *testing.T) {
 	}
 }
 
+func TestReportLinkFuncCapturesOnClick(t *testing.T) {
+	e := newEnv(t, "")
+	captures := 0
+	var rep *feedback.Report
+	app := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Children(func() {
+			for _, k := range []string{"a", "b", "c"} {
+				ReportLinkFunc(c.Key(k), e.w, func() *feedback.Report {
+					captures++
+					rep = capture(t, e.m)
+					return rep
+				})
+			}
+		})
+	}, 600, 400)
+	for i := 0; i < 3; i++ {
+		app.Frame()
+	}
+	if captures != 0 {
+		t.Fatalf("captured %d times while drawing", captures)
+	}
+	if err := app.Click("Report this problem…"); err != nil {
+		t.Fatal(err)
+	}
+	if captures != 1 || e.w.f.Report == nil || e.w.f.Report != rep {
+		t.Fatalf("captures %d, form report %v", captures, e.w.f.Report)
+	}
+}
+
 func TestChineseTexts(t *testing.T) {
 	e := newEnv(t, "")
 	e.lang = "zh-Hans"

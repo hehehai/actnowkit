@@ -45,13 +45,18 @@ a.feedbackWin = feedbackui.New(feedbackui.Options{
 // Help → Send Feedback…
 menu.Item(i18n.T("Send Feedback…"), func() { a.feedbackWin.Open(feedback.Prefill{}) })
 
-// Where the app shows an error the user can report:
-rep, _ := a.feedbackMgr.Capture(feedback.ErrorContext{
-	Title: i18n.T("Transcription failed"), Code: "E-ASR-0042", Kind: "engine_out_of_memory",
-	Where: "Meetings › Transcribe", Err: err,
+// Where the app shows an error the user can report: the report is
+// captured when the link is clicked (off the UI thread), so a list of many
+// failures costs nothing until one is reported.
+feedbackui.ReportLinkFunc(c, a.feedbackWin, func() *feedback.Report {
+	rep, _ := a.feedbackMgr.Capture(feedback.ErrorContext{
+		Title: i18n.T("Transcription failed"), Code: "E-ASR-0042", Kind: "engine_out_of_memory",
+		Where: "Meetings › Transcribe", Err: err,
+	})
+	return rep
 })
-// … in the error's view:
-feedbackui.ReportLink(c, a.feedbackWin, rep)
+// (ReportLink(c, w, rep) takes a report captured already, at the time of
+// the error: the log lines are then those of that moment.)
 
 // Recent actions, for the reports:
 a.feedbackMgr.Step("transcribe")
