@@ -535,3 +535,16 @@ func TestCancelWhileSending(t *testing.T) {
 		t.Fatal("cancelling the sending closed the window")
 	}
 }
+
+func TestHeadlessOpens(t *testing.T) {
+	e := newEnv(t, "")
+	w := New(Options{Manager: e.m, AppName: "Dicta", Headless: true, Post: func(fn func()) { fn() }, Async: func(fn func()) { fn() }})
+	w.Open(feedback.Prefill{})
+	if !w.IsOpen() || w.NativeWindow() != nil {
+		t.Fatal("not open")
+	}
+	w.Close()
+	if w.IsOpen() {
+		t.Fatal("still open")
+	}
+}

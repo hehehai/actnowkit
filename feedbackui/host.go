@@ -29,6 +29,14 @@ type host interface {
 	invalidate()
 }
 
+// headlessHost is the window of Options.Headless: nothing on screen.
+type headlessHost struct{}
+
+func (headlessHost) native() *mygo.Window { return nil }
+func (headlessHost) focus()               {}
+func (headlessHost) close()               {}
+func (headlessHost) invalidate()          {}
+
 type mygoHost struct{ win *mygo.Window }
 
 func (h *mygoHost) native() *mygo.Window { return h.win }

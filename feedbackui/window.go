@@ -64,6 +64,10 @@ type Options struct {
 	// Dock while the window is open (mygo.App.SetActivationPolicy).
 	WindowOpened func(*mygo.Window)
 	WindowClosed func()
+
+	// Headless: Open makes no native window (an app's tests, which draw
+	// View in their own ui.Tester): the window counts as open until Close.
+	Headless bool
 }
 
 // Window is the feedback window of an app: one, opened and closed as the
@@ -168,6 +172,9 @@ func New(o Options) *Window {
 		thumbs: map[string]*thumb{}, full: map[string]*thumb{}, newHost: newMyGoHost}
 	if w.texts == nil {
 		w.texts = DefaultTexts()
+	}
+	if o.Headless {
+		w.newHost = func(*Window) host { return headlessHost{} }
 	}
 	if w.m != nil {
 		w.st = w.m.State()
