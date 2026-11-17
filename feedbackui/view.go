@@ -379,26 +379,26 @@ func (w *Window) footer(f *frame) {
 				if w.prepErr != "" {
 					ui.Text(c.Key("fb-prep-err"), w.tx(w.texts.SendFailed, "error", w.prepErr)).FontSize(f.fs - 1.5).TextColor(p.Danger).Selectable()
 				}
-				ui.RichText(c.Key("fb-privacy-line")).FontSize(f.fs - 1.5).TextColor(p.TextMuted).Children(func() {
-					ui.Text(c, w.tx(w.texts.Privacy)+" ")
+				ui.Text(c.Key("fb-privacy-line"), w.tx(w.texts.Privacy)).FontSize(f.fs - 1.5).TextColor(p.TextMuted)
+				ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+					// A link people can tab to (a focusable button), not a span.
+					if w.opt.PrivacyURL != "" && f.link("fb-privacy", w.tx(w.texts.PrivacyLink), f.fs-1.5).Clicked() {
+						w.openURL(w.opt.PrivacyURL)
+					}
+					if w.m == nil {
+						return
+					}
 					if w.opt.PrivacyURL != "" {
-						l := ui.Text(c.Key("fb-privacy"), w.tx(w.texts.PrivacyLink)).TextColor(p.Accent).Role(ui.RoleLink).Cursor(ui.CursorPointer)
-						if l.Clicked() {
-							w.openURL(w.opt.PrivacyURL)
-						}
+						ui.Text(c, "·").FontSize(f.fs - 1.5).TextColor(p.TextMuted)
+					}
+					n := len(w.history)
+					if f.link("fb-history", w.tx(w.texts.HistoryCount, "count", strconv.Itoa(n)), f.fs-1).Clicked() {
+						w.OpenHistory()
+					}
+					if w.Unread() > 0 {
+						dot(c, 7, p.Accent).Tooltip(w.tx(w.texts.NewReply))
 					}
 				})
-				if w.m != nil {
-					ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-						n := len(w.history)
-						if f.link("fb-history", w.tx(w.texts.HistoryCount, "count", strconv.Itoa(n)), f.fs-1).Clicked() {
-							w.OpenHistory()
-						}
-						if w.Unread() > 0 {
-							dot(c, 7, p.Accent).Tooltip(w.tx(w.texts.NewReply))
-						}
-					})
-				}
 			})
 			if f.button("fb-cancel", w.tx(w.texts.Cancel)).Clicked() {
 				w.f, w.tried, w.problems, w.fileErr, w.prepErr = form{Diagnostics: true, Email: w.f.Email}, false, nil, "", ""
