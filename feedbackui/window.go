@@ -253,6 +253,19 @@ func (w *Window) show() {
 	w.invalidate()
 }
 
+// Invalidate redraws the window (an app's setting it follows changed:
+// its language, its appearance).
+func (w *Window) Invalidate() { w.invalidate() }
+
+// title is the window's title in the app's language.
+func (w *Window) title() string {
+	t := w.tx(w.texts.WindowTitle)
+	if w.opt.AppName != "" {
+		t += " — " + w.opt.AppName
+	}
+	return t
+}
+
 // Close closes the window (its draft stays for the next Open).
 func (w *Window) Close() {
 	if w.h != nil {

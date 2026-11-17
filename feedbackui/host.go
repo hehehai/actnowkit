@@ -47,12 +47,8 @@ func (h *mygoHost) invalidate()          { h.win.Invalidate() }
 // newMyGoHost opens the window.
 func newMyGoHost(w *Window) host {
 	registerScheme(w.logf)
-	title := w.tx(w.texts.WindowTitle)
-	if w.opt.AppName != "" {
-		title += " — " + w.opt.AppName
-	}
 	win := mygo.NewWindow(mygo.WindowOptions{
-		Title: title, Width: WindowWidth, Height: WindowHeight, MinWidth: WindowMinWidth, MinHeight: WindowMinHeight,
+		Title: w.title(), Width: WindowWidth, Height: WindowHeight, MinWidth: WindowMinWidth, MinHeight: WindowMinHeight,
 		MaxWidth: 900, DisableMaximize: true, DisableFullScreen: true,
 		TitleBarStyle: mygo.TitleBarHidden,
 		Content:       ui.View(w.View),

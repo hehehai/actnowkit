@@ -30,6 +30,11 @@ func (w *Window) frame(c *ui.Context) *frame {
 func (w *Window) View(c *ui.Context) {
 	f := w.frame(c)
 	c.SetTheme(f.th.mygoTheme(c.Theme(), f.p))
+	if nw := w.NativeWindow(); nw != nil {
+		if t := w.title(); nw.Title() != t {
+			nw.SetTitle(t) // the app's language changed
+		}
+	}
 	ui.Column(c.Key("fb-root")).Fill().Background(f.p.Background).Children(func() {
 		if bar := c.TitleBar(); bar.Height > 0 {
 			ui.Box(c.Key("fb-titlebar")).Height(bar.Height).Shrink(0).DragWindow()
