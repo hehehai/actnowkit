@@ -590,3 +590,20 @@ func TestScriptedCheckAPI(t *testing.T) {
 		t.Fatal("a web view headless")
 	}
 }
+
+func TestThemeDarkOverride(t *testing.T) {
+	e := newEnv(t, "")
+	dark := true
+	e.w.opt.Theme.DarkMode = func() *bool { return &dark }
+	e.w.Open(feedback.Prefill{})
+	e.frame()
+	if c := e.tt.Image().RGBAAt(5, 300); c.R > 40 {
+		t.Fatalf("not dark: %v", c)
+	}
+	dark = false
+	e.tt.SetDark(true) // the system's, overridden
+	e.frame()
+	if c := e.tt.Image().RGBAAt(5, 300); c.R < 200 {
+		t.Fatalf("not light: %v", c)
+	}
+}

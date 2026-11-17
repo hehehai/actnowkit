@@ -75,6 +75,9 @@ type Theme struct {
 	// FromMyGo takes the colors from the MyGo theme of the frame
 	// (c.Theme(): the system's, or the one the app sets) instead.
 	FromMyGo bool
+	// DarkMode overrides the system's appearance: the app's own setting
+	// (nil, or a func answering nil: the system's).
+	DarkMode func() *bool
 	// Radius of the buttons and fields (0: 7); the cards and tiles are 3
 	// more.
 	Radius float32
@@ -92,8 +95,26 @@ type Theme struct {
 	Switch        func(c *ui.Context, on *bool) ui.Element
 }
 
+// dark: the app's appearance, else the frame's (the system's).
+func (th *Theme) dark(t *ui.Theme) bool {
+	if th.DarkMode != nil {
+		if d := th.DarkMode(); d != nil {
+			return *d
+		}
+	}
+	return t.Dark
+}
+
 // palette for a frame whose MyGo theme is t.
 func (th *Theme) palette(t *ui.Theme) *Palette {
+	if d := th.dark(t); d != t.Dark {
+		base := ui.LightTheme()
+		if d {
+			base = ui.DarkTheme()
+		}
+		base.FontSize, base.Font = t.FontSize, t.Font
+		t = base
+	}
 	switch {
 	case th.FromMyGo:
 		return PaletteOf(t)
@@ -134,6 +155,14 @@ func (th *Theme) mono() string {
 // widgets the window takes from MyGo (text fields, switches, check boxes).
 func (th *Theme) mygoTheme(base *ui.Theme, p *Palette) *ui.Theme {
 	t := *base
+	if d := th.dark(base); d != base.Dark {
+		b := ui.LightTheme()
+		if d {
+			b = ui.DarkTheme()
+		}
+		b.FontSize, b.Font = base.FontSize, base.Font
+		t = *b
+	}
 	t.Background, t.Surface, t.Border = p.Background, p.Raised, p.Border
 	t.SurfaceHover, t.SurfacePressed = p.Track, p.Separator
 	t.Text, t.TextMuted = p.Text, p.TextMuted
