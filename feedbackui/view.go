@@ -1,6 +1,7 @@
 package feedbackui
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -447,13 +448,17 @@ func mb(n int64) string { return fmt.Sprintf("%.1f", float64(n)/(1<<20)) }
 // failText says why this window's feedback was not sent.
 func (w *Window) failText() string {
 	st := w.st
-	if st.Current != nil && st.Current.ErrorCode == "rate_limited" {
+	var api *feedback.APIError
+	switch {
+	case errors.As(st.Err, &api) && api.Code == "rate_limited", st.Current != nil && st.Current.ErrorCode == "rate_limited":
+		// Found on the Mac: a rate limit (retryable, so no ErrorCode) showed
+		// the raw "feedback: rate_limited (429)".
 		return w.tx(w.texts.RateLimited)
-	}
-	if st.Current != nil && !st.Current.Rejected {
-		if st.Err != nil && strings.Contains(st.Err.Error(), feedback.ErrNetwork.Error()) {
-			return w.tx(w.texts.Failed)
-		}
+	case errors.Is(st.Err, feedback.ErrNetwork),
+		st.Err != nil && strings.Contains(st.Err.Error(), feedback.ErrNetwork.Error()):
+		return w.tx(w.texts.Failed)
+	case api != nil && api.Message != "":
+		return w.tx(w.texts.SendFailed, "error", api.Message)
 	}
 	return w.tx(w.texts.SendFailed, "error", errText(st.Err))
 }

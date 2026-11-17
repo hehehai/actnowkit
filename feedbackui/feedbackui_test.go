@@ -636,3 +636,22 @@ func TestThemeDarkOverride(t *testing.T) {
 		t.Fatalf("not light: %v", c)
 	}
 }
+
+func TestFailTexts(t *testing.T) {
+	e := newEnv(t, "")
+	sub := &feedback.Submission{LocalID: "x"}
+	e.w.mine = "x"
+	for _, c := range []struct {
+		err  error
+		want string
+	}{
+		{&feedback.APIError{HTTPStatus: 429, Code: "rate_limited", Message: "Too many requests"}, feedback.TextRateLimited.EN},
+		{fmt.Errorf("create: %w", feedback.ErrNetwork), feedback.TextFailed.EN},
+		{&feedback.APIError{HTTPStatus: 422, Code: "attachment_type", Message: "This file type is not accepted"}, "Not sent: This file type is not accepted"},
+	} {
+		e.w.st = feedback.State{Phase: feedback.Failed, Current: sub, Step: "create", Err: c.err}
+		if got := e.w.failText(); got != c.want {
+			t.Errorf("%v: %q, want %q", c.err, got, c.want)
+		}
+	}
+}
