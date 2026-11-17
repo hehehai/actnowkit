@@ -1,28 +1,56 @@
 # Changelog
 
-## Unreleased (v0.22.0)
+## v0.22.0 — 2026-11-17
 
+In-app feedback grows its own window, error reports and a Keychain
+guard; code written for v0.21 builds and behaves as before (the guard
+changes nothing for an app running in the user's own HOME).
+
+- `feedback`: error reports for "Report this problem" links. `Capture`
+  (an `ErrorContext`: title, code, kind, where, the error) keeps a
+  `Report` on this Mac (Dir/reports, 7 days, at most 50): the context and
+  the error through `redact.Text`, `redact.Personal` and the app's
+  `Scrub`, the recent actions (`Step`, names only, the newest 30) and the
+  main log's newest 40 lines. `Prefill` (and its `Draft`) opens the form
+  with a report, included by default; sent, it goes in diagnostics.json
+  (`report`) and the create request's new optional `context` (title,
+  code, kind, where, at, reportId, steps), which the sites keep for their
+  panels' error-code filters and "Common errors". `Thumbnail` (images in
+  Go or through the Converter, a video's first frame through Quick Look)
+  and `VideoDuration` (the movie's mvhd box). The Chinese for Question is
+  now 提问. The window's texts (`TextWindowTitle`, `TextReportLink`,
+  `TextIncludeReport`, `TextContext*`, `TextAttachCount`, …).
 - New module `github.com/hehehai/actnowkit/feedbackui` (its own go.mod,
   tag `feedbackui/v0.22.0`; it depends on MyGo, the core packages still
   do not): the feedback window the apps share. One window per app (`New`,
   `Open` with a `feedback.Prefill`, `OpenHistory`, `OpenThread`, `Close`,
-  `Stop`); the form with the error report's card, a grid of thumbnails,
-  previews (images, the video in a web view, Open in QuickTime Player),
-  the sending's progress, failure and success; Your feedback with the
-  threads; `HistoryPanel` for an app's Settings and `ReportLink` for the
-  "Report this problem…" link; `Theme` (palettes, `FromMyGo`, control
-  callbacks) and `Texts`. `scripts/check-mygo.sh` builds and vets it
-  against every app's vendored MyGo.
+  `Stop`, `Invalidate`); the form with the error report's card, a grid of
+  thumbnails (drop files on it), previews (images; the video in a web view
+  through the window's own `actnowfb://` scheme, with ranges; Open in
+  QuickTime Player), the sending's progress, failure and success; Your
+  feedback with the threads; `HistoryPanel` for an app's Settings;
+  `ReportLink` (a report captured already) and `ReportLinkFunc` (captured
+  when clicked, off the UI thread: lists of failures cost nothing until
+  one is reported); `Theme` (palettes, `DarkMode` for the app's own
+  appearance setting, `FromMyGo`, control callbacks) and `Texts`;
+  `Options.Headless` and a scripted-check API (`Snapshot`, `SetForm`,
+  `AddFiles`, `Send`, …, `VideoState`, `VideoServed`) for the apps' tests
+  and checks. `scripts/check-mygo.sh` builds and vets it against every
+  app's vendored MyGo. LICENSE and NOTICE in the module.
 - New package `feedback/feedbacktest`: the feedback site in memory
   (`Site`: identity, create, direct uploads, complete, list, get, reply;
   knobs to fail, refuse, slow the uploads; `SupportReplies`), for the apps'
   tests.
-- `feedback`: texts of the window (`TextOptional`, `TextEmailNeeded`,
-  `TextSeeWhatIsSent`, `TextWhatIsSent*`, `TextAddFiles`, `TextCopy`,
-  `TextCopied`, `TextDone`, `TextPrevious`, `TextNext`, `TextBack`,
-  `TextRefresh`, `TextLoading`, `TextUnreachable`, `TextYourReply`,
-  `TextImageOf`, `TextVideoOf`, `TextReportLines`, `TextToday`,
-  `TextSendFailed`).
+- `credentials`: a `Keychain` never runs /usr/bin/security from a process
+  whose HOME is not the user's home (getpwuid's, links resolved), whose
+  HOME has no Library/Keychains, or with `ACTNOW_NO_KEYCHAIN=1`: its items
+  go to a stand-in file (`ACTNOW_KEYCHAIN_FILE`, else
+  `$HOME/.actnow-keychain-standin.json`, 0600). A check build of an app
+  started with a HOME of its own made macOS show "Keychain Not Found …
+  Reset To Defaults" on the user's screen; every licence, trial and
+  shared key goes through this type, so all apps are covered.
+  `KeychainGuarded` says whether (and why); `OnSecurity` is a probe for
+  tests. Refto's internal/keychain stand-in, moved here.
 
 ## v0.21.1 — 2026-11-16
 
