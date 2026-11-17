@@ -40,6 +40,7 @@ type Snapshot struct {
 	History  int
 	Unread   int
 	Thread   string // the thread open
+	Loaded   bool   // its messages are here (Reply works once they are)
 	Messages int
 }
 
@@ -58,7 +59,7 @@ func (w *Window) Snapshot() Snapshot {
 		s.Sheet = w.sheet.text
 	}
 	if w.thread != nil {
-		s.Messages = len(w.thread.Messages)
+		s.Loaded, s.Messages = true, len(w.thread.Messages)
 	}
 	return s
 }
