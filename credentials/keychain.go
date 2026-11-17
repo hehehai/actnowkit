@@ -59,8 +59,16 @@ func (k Keychain) run(stdin string, args ...string) ([]byte, []byte, error) {
 	return RunSecurity(stdin, args...)
 }
 
+// OnSecurity, when set, is called before every run of /usr/bin/security
+// (with its arguments): tests and scripted checks prove a guarded process
+// never runs it.
+var OnSecurity func(args ...string)
+
 // RunSecurity runs /usr/bin/security (the default Keychain.Run).
 func RunSecurity(stdin string, args ...string) ([]byte, []byte, error) {
+	if OnSecurity != nil {
+		OnSecurity(args...)
+	}
 	if runtime.GOOS != "darwin" {
 		return nil, nil, ErrNoKeychain
 	}

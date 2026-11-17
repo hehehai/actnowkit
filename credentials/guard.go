@@ -35,7 +35,7 @@ var guardOnce = sync.OnceValue(func() guardDecision {
 // resets the user's login keychain. Such a process, and one with
 // ACTNOW_NO_KEYCHAIN=1, keeps its items in a file instead.
 func decideGuard(home, real, env, file, goos string) guardDecision {
-	other := home != "" && real != "" && filepath.Clean(home) != filepath.Clean(real)
+	other := home != "" && real != "" && !samePath(home, real)
 	if file == "" && home != "" && (other || env == "1") {
 		file = filepath.Join(home, ".actnow-keychain-standin.json")
 	}
@@ -57,6 +57,19 @@ func KeychainGuarded() (bool, string) {
 	return d.off, d.why
 }
 
+// samePath compares two folders after resolving symbolic links (/var and
+// /private/var on macOS), falling back to their cleaned paths.
+func samePath(a, b string) bool {
+	ra, err1 := filepath.EvalSymlinks(a)
+	rb, err2 := filepath.EvalSymlinks(b)
+	if err1 == nil && err2 == nil {
+		return filepath.Clean(ra) == filepath.Clean(rb)
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
+// userHome is the home folder of the process's user in the user database
+// (getpwuid through os/user: libc on macOS, never $HOME); "" when unknown.
 func userHome() string {
 	u, err := user.Current()
 	if err != nil {

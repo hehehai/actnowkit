@@ -2,6 +2,7 @@ package credentials
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -24,6 +25,52 @@ func TestDecideGuard(t *testing.T) {
 		if d.off != c.off || d.file != c.wantFile {
 			t.Errorf("case %d: %+v", i, d)
 		}
+	}
+}
+
+// A release build in the user's own HOME (with its keychain) is not
+// guarded: it runs security exactly as before. Symbolic links to the same
+// folder are the same HOME.
+func TestGuardLeavesTheUsersHomeAlone(t *testing.T) {
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, "Library", "Keychains"), 0o700)
+	if d := decideGuard(home, home, "", "", "darwin"); d.off {
+		t.Fatalf("user's home guarded: %+v", d)
+	}
+	link := filepath.Join(t.TempDir(), "home-link")
+	if err := os.Symlink(home, link); err != nil {
+		t.Fatal(err)
+	}
+	if d := decideGuard(link, home, "", "", "darwin"); d.off {
+		t.Fatalf("a link to the user's home guarded: %+v", d)
+	}
+	if d := decideGuard(home+"/", home, "", "", "darwin"); d.off {
+		t.Fatalf("trailing slash guarded: %+v", d)
+	}
+	// Unknown user database answer: the keychain folder decides.
+	if d := decideGuard(home, "", "", "", "darwin"); d.off {
+		t.Fatalf("unknown real home, keychain present: %+v", d)
+	}
+	other := t.TempDir()
+	if d := decideGuard(other, "", "", "", "darwin"); !d.off {
+		t.Fatalf("unknown real home, no keychain: %+v", d)
+	}
+}
+
+// Not guarded, Keychain runs security (through OnSecurity); guarded, it
+// never does.
+func TestOnSecurityProbe(t *testing.T) {
+	calls := 0
+	OnSecurity = func(args ...string) { calls++ }
+	defer func() { OnSecurity = nil }()
+	RunSecurity("", "find-generic-password", "-s", "x")
+	if calls != 1 {
+		t.Fatalf("probe not called: %d", calls)
+	}
+	k := Keychain{Service: "x", Run: standIn(filepath.Join(t.TempDir(), "k.json"))}
+	k.Get("a")
+	if calls != 1 {
+		t.Fatalf("the stand-in ran security: %d", calls)
 	}
 }
 
