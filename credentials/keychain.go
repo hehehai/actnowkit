@@ -35,8 +35,10 @@ type Keychain struct {
 	// (tests: the login keychain is locked in SSH sessions).
 	File string
 	// Run runs security with args and stdin and returns its standard
-	// output and error; nil = /usr/bin/security (tests replace it). A
-	// missing item is ErrNotFound.
+	// output and error; nil = /usr/bin/security (tests replace it), or,
+	// when the process must keep away from the Keychain (KeychainGuarded:
+	// a HOME that is not the user's, ACTNOW_NO_KEYCHAIN=1), a stand-in
+	// file. A missing item is ErrNotFound.
 	Run func(stdin string, args ...string) (stdout, stderr []byte, err error)
 }
 
@@ -50,6 +52,9 @@ func (k Keychain) service() string {
 func (k Keychain) run(stdin string, args ...string) ([]byte, []byte, error) {
 	if k.Run != nil {
 		return k.Run(stdin, args...)
+	}
+	if d := guardOnce(); d.off && k.File == "" {
+		return standIn(d.file)(stdin, args...)
 	}
 	return RunSecurity(stdin, args...)
 }
