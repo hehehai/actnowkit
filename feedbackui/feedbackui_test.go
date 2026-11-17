@@ -548,3 +548,45 @@ func TestHeadlessOpens(t *testing.T) {
 		t.Fatal("still open")
 	}
 }
+
+func TestScriptedCheckAPI(t *testing.T) {
+	e := newEnv(t, "tok")
+	e.site.Tokens["tok"] = "river@gmail.com"
+	fs := e.files()
+	e.picked = fs[:2]
+	e.w.Open(feedback.Prefill{})
+	e.w.PickFiles()
+	e.w.AddFiles(fs[3])
+	e.w.Preview(2)
+	s := e.w.Snapshot()
+	if !s.Open || len(s.Images) != 2 || s.Video != fs[3] || s.Viewer != 2 {
+		t.Fatalf("%+v", s)
+	}
+	e.w.OpenWith()
+	e.w.Preview(-1)
+	e.w.RemoveFile(0)
+	e.w.ShowWhatIsSent(false)
+	if !strings.Contains(e.w.Snapshot().Sheet, "dicta") {
+		t.Fatalf("sheet %q", e.w.Snapshot().Sheet)
+	}
+	e.w.CloseSheet()
+	e.w.SetForm(feedback.KindIdea, "Please add dark icons.", "", true, false)
+	e.w.Send()
+	s = e.w.Snapshot()
+	if s.Page != "done" || s.Sent != "FB-1042" || len(e.opened) != 1 {
+		t.Fatalf("%+v opened %v", s, e.opened)
+	}
+	e.site.SupportReplies("fb_1", "Noted")
+	e.w.ViewSent()
+	e.w.Reply("Thanks")
+	if s := e.w.Snapshot(); s.Page != "thread" || s.Messages != 2 {
+		t.Fatalf("%+v", s)
+	}
+	e.w.Back()
+	if e.w.Snapshot().Page != "history" {
+		t.Fatal("not back")
+	}
+	if e.w.VideoWebView() != nil {
+		t.Fatal("a web view headless")
+	}
+}

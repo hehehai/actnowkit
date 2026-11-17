@@ -105,7 +105,12 @@ func registerScheme(logf func(string)) {
 				return
 			}
 			rw.Header().Set("Content-Type", videoType(p.(string)))
-			http.ServeContent(rw, r, "", st.ModTime(), f)
+			servedRequests.Add(1)
+			if r.Header.Get("Range") != "" {
+				servedRanges.Add(1)
+			}
+			cw := &countingWriter{ResponseWriter: rw}
+			http.ServeContent(cw, r, "", st.ModTime(), f)
 		}))
 		if err != nil {
 			logf("video scheme: " + err.Error())
@@ -175,4 +180,13 @@ func (v *videoView) drop() {
 		served.Delete(v.token)
 	}
 	*v = videoView{}
+}
+
+// countingWriter counts the bytes served (VideoServed).
+type countingWriter struct{ http.ResponseWriter }
+
+func (c *countingWriter) Write(b []byte) (int, error) {
+	n, err := c.ResponseWriter.Write(b)
+	servedBytes.Add(int64(n))
+	return n, err
 }
