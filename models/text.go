@@ -33,7 +33,7 @@ var (
 	// and TextSharedOthers; the delete dialogs still name the apps.
 	TextShared = family.Text{EN: "Shared across ActNow", ZH: "ActNow 共用"}
 	// TextLoadedElsewhere: another app holds the model in memory now.
-	TextLoadedElsewhere = family.Text{EN: "In use by another ActNow app", ZH: "其他 ActNow App 正在使用"}
+	TextLoadedElsewhere = family.Text{EN: "In use by another app", ZH: "其他 App 正在使用"}
 	// Deprecated: use TextShared (v0.22.1).
 	TextSharedWith   = family.Text{EN: "Shared with {apps}", ZH: "与 {apps} 共用"}
 	TextFolderShared = family.Text{EN: "Shared by all ActNow apps", ZH: "由所有 ActNow app 共用"}

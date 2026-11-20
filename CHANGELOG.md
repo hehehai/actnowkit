@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.22.2 — 2026-11-20
+
+- `models.TextLoadedElsewhere` is shorter: "In use by another app" (其他
+  App 正在使用); the longer one did not fit beside a model's name.
+
 ## v0.22.1 — 2026-11-20
 
 Shared things say "Shared across ActNow" (中文 "ActNow 共用") instead of
