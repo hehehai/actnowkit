@@ -330,14 +330,17 @@ var (
 		EN: "Found API keys in other ActNow apps: {vendors}. Use them in {app}?",
 		ZH: "在其他 ActNow app 中找到 API 密钥：{vendors}。要在 {app} 中使用吗？",
 	}
-	TextUseThem      = family.Text{EN: "Use them", ZH: "使用"}
-	TextNotNow       = family.Text{EN: "Not now", ZH: "暂不"}
-	TextAlsoUpdates  = family.Text{EN: "Also updates it in {apps}.", ZH: "{apps} 中也会一并更新。"}
-	TextAlsoUsesKey  = family.Text{EN: "{apps} also uses this key.", ZH: "{apps} 也在使用此密钥。"}
-	TextStopHere     = family.Text{EN: "Stop using it here", ZH: "仅在此处停用"}
-	TextDeleteAll    = family.Text{EN: "Delete for all apps", ZH: "为所有 app 删除"}
-	TextDifferentKey = family.Text{EN: "{app} has a different {vendor} key.", ZH: "{app} 中的 {vendor} 密钥与此不同。"}
-	TextSecurityHelp = family.Text{
+	TextUseThem = family.Text{EN: "Use them", ZH: "使用"}
+	TextNotNow  = family.Text{EN: "Not now", ZH: "暂不"}
+	// Deprecated: use TextAlsoUpdatesShared (v0.22.1), which names no apps.
+	TextAlsoUpdates = family.Text{EN: "Also updates it in {apps}.", ZH: "{apps} 中也会一并更新。"}
+	// TextAlsoUpdatesShared: under a shared key, without the apps' names.
+	TextAlsoUpdatesShared = family.Text{EN: "Shared across ActNow: the other apps get the new key too.", ZH: "ActNow 共用：其他 App 也会一并更新。"}
+	TextAlsoUsesKey       = family.Text{EN: "{apps} also uses this key.", ZH: "{apps} 也在使用此密钥。"}
+	TextStopHere          = family.Text{EN: "Stop using it here", ZH: "仅在此处停用"}
+	TextDeleteAll         = family.Text{EN: "Delete for all apps", ZH: "为所有 app 删除"}
+	TextDifferentKey      = family.Text{EN: "{app} has a different {vendor} key.", ZH: "{app} 中的 {vendor} 密钥与此不同。"}
+	TextSecurityHelp      = family.Text{
 		EN: "Shared keys are stored in your login keychain. Like each app's own keys, other programs you run can read them with the security tool.",
 		ZH: "共享密钥保存在登录钥匙串中。与各 app 自己保存的密钥一样，你运行的其他程序可以通过 security 工具读取它们。",
 	}

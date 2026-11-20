@@ -6,12 +6,18 @@ import "github.com/hehehai/actnowkit/family"
 // with their own i18n; placeholders are filled with Text.Fill.
 var (
 	// TextReuseTitle / TextReuseBy: the first-run reuse card (§7.10.1).
-	TextReuseTitle  = family.Text{EN: "{count} models are already on this Mac", ZH: "已在这台 Mac 上找到 {count} 个模型"}
-	TextReuseBy     = family.Text{EN: "Installed by {app} · {size} · no download needed", ZH: "由 {app} 安装 · {size} · 无需下载"}
+	TextReuseTitle = family.Text{EN: "{count} models are already on this Mac", ZH: "已在这台 Mac 上找到 {count} 个模型"}
+	TextReuseBy    = family.Text{EN: "Installed by {app} · {size} · no download needed", ZH: "由 {app} 安装 · {size} · 无需下载"}
+	// TextReuseShared: the reuse card's line without app names (v0.22.1),
+	// for when several apps installed the models.
+	TextReuseShared = family.Text{EN: "Shared across ActNow · {size} · no download needed", ZH: "ActNow 共用 · {size} · 无需下载"}
 	TextUseThem     = family.Text{EN: "Use them", ZH: "直接使用"}
 	TextChooseModel = family.Text{EN: "Choose models…", ZH: "选择模型…"}
 	TextStillToGet  = family.Text{EN: "{size} still to download", ZH: "还需下载 {size}"}
 	TextInstalledBy = family.Text{EN: "Installed · from {app}", ZH: "已安装 · 来自 {app}"}
+	// TextInstalledShared: a model's state when only other apps use it,
+	// without naming them (v0.22.1; preferred over TextInstalledBy).
+	TextInstalledShared = family.Text{EN: "Installed · Shared across ActNow", ZH: "已安装 · ActNow 共用"}
 	// TextAlternative: the recommended model is missing, a lighter one of
 	// the same series is there (§7.10.1). Default button: download.
 	TextAlternative = family.Text{
@@ -21,10 +27,18 @@ var (
 	TextUseAlternative = family.Text{EN: "Use {have}", ZH: "先用 {have}"}
 	TextDownloadWanted = family.Text{EN: "Download {want}", ZH: "下载 {want}"}
 
-	// Models and storage pages (§7.10.2).
+	// Models and storage pages (§7.10.2). A model's state says it is
+	// shared, not with whom (v0.22.1): the list grows with the family and
+	// names apps that are not public. TextShared replaces TextSharedWith
+	// and TextSharedOthers; the delete dialogs still name the apps.
+	TextShared = family.Text{EN: "Shared across ActNow", ZH: "ActNow 共用"}
+	// TextLoadedElsewhere: another app holds the model in memory now.
+	TextLoadedElsewhere = family.Text{EN: "In use by another ActNow app", ZH: "其他 ActNow App 正在使用"}
+	// Deprecated: use TextShared (v0.22.1).
 	TextSharedWith   = family.Text{EN: "Shared with {apps}", ZH: "与 {apps} 共用"}
 	TextFolderShared = family.Text{EN: "Shared by all ActNow apps", ZH: "由所有 ActNow app 共用"}
 	TextOnlyThisApp  = family.Text{EN: "Only {app}", ZH: "仅 {app}"}
+	// Deprecated: use TextShared (v0.22.1).
 	TextSharedOthers = family.Text{EN: "Shared with other ActNow apps", ZH: "与其他 ActNow app 共享"}
 	TextStillUsedBy  = family.Text{EN: "Still used by {app}, kept", ZH: "仍被 {app} 使用，已保留"}
 	TextOrphans      = family.Text{

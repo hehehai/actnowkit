@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.22.1 — 2026-11-20
+
+Shared things say "Shared across ActNow" (中文 "ActNow 共用") instead of
+naming every app: the list grew with the family, crowded the models
+pages and named apps that are not public. Reference texts only; nothing
+else changes.
+
+- `models`: `TextShared`, `TextInstalledShared`, `TextLoadedElsewhere`
+  and `TextReuseShared` for a model's state and the first-run reuse card.
+  `TextSharedWith` and `TextSharedOthers` are deprecated. The delete
+  dialogs (`TextRemoveBody`, `TextDeleteForAllMsg`, `TextStillUsedBy`)
+  still name the apps: there the names say what a choice does.
+- `credentials`: `TextAlsoUpdatesShared` under a shared key;
+  `TextAlsoUpdates` is deprecated.
+
 ## v0.22.0 — 2026-11-17
 
 In-app feedback grows its own window, error reports and a Keychain
