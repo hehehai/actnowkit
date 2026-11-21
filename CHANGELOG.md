@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.23.0 — 2026-11-21
+
+A new package for the apps' move to MyGo 0.10 (ActNow's fork,
+github.com/hehehai/mygo): the update feed as a source of MyGo's updater,
+in place of the apps' updater patches. Nothing else changes.
+
+- New package `updatefeed`: `Source` is the update feed of actnow.dev (or
+  refto.one) with the methods of MyGo's `UpdateSource`
+  (`mygo.Updater.SetSource`; actnowkit still does not import MyGo).
+  `Manifest` reads the releases' `update-<target>.json`, or, when MyGo
+  asks for prereleases or the app's `Beta` says so, the beta channel's
+  (`beta/` beside it) as well and returns the newer; one channel that
+  cannot be read leaves the other's, and a channel without a manifest
+  (404) is `ErrNotPublished`, an `fs.ErrNotExist`, which MyGo's `Check`
+  reports as no update. `Open` downloads what the manifest names over
+  HTTPS (redirects to HTTPS only) through the app's `Transport` (its proxy
+  rule; nil is `http.DefaultTransport`), tries a failing gateway again,
+  gives up on headers after `HeaderTimeout` (30 s) and on a body silent
+  for `StallTimeout` (1 minute), and goes on from where a download broke
+  off with `Range`/`If-Range` (`Resumes`, 5 in a row, `ResumeWait` 1 s
+  doubling; `Resumed` counts them). It checks nothing it downloads: MyGo
+  checks the size and the release signature of every archive and delta.
+  `ManifestURL`, `Compare` and `IsPrerelease` (MyGo's version order).
+
 ## v0.22.2 — 2026-11-20
 
 - `models.TextLoadedElsewhere` is shorter: "In use by another app" (其他

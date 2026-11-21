@@ -21,12 +21,13 @@ package checks either.
   they export English and Chinese reference strings (`family.Text`) for
   apps to put in their own catalogues; `i18n` is the catalogue code the
   apps share (their messages stay in the app).
-  `updates` takes MyGo's updater as two functions.
-- Status: **v0.22** — `hfhub` is experimental; the other packages follow the
+  `updates` takes MyGo's updater as two functions; `updatefeed` has the
+  methods of MyGo's `UpdateSource` without importing it.
+- Status: **v0.23** — `hfhub` is experimental; the other packages follow the
   protocol's first phase. APIs may change before v1.0.
 
 ```sh
-go get github.com/hehehai/actnowkit@v0.22.0
+go get github.com/hehehai/actnowkit@v0.23.0
 go mod tidy   # adds purego (only the darwin files import it) and, with lang, golang.org/x/text
 ```
 
@@ -49,6 +50,7 @@ Go 1.27 or later. Apple silicon and Intel Macs, macOS 12 or later.
 | [`sounds`](sounds) | Cue sounds: the catalogue an app ships (`catalog.json` + audio, read from the app's `fs.FS`; actnowkit carries no audio), each event's choice (a catalogue sound, a macOS system sound, none), filters for a picker (group, tags, text, suggested uses), previews, and a low-latency player (AVAudioEngine on macOS). |
 | [`licence`](licence) | The app's licence on this Mac, against actnow.dev ([docs/licensing.md](https://github.com/hehehai/actnow-www/blob/main/docs/licensing.md) of the site): activation with a code, Ed25519 tokens bound to the Mac's device ID (IOPlatformUUID + the app's salt, hashed) and verified offline with the embedded `ProductionKeys`, the app's own Keychain item, refresh every 7 days, 30 days offline, clock-rollback detection, early-access (whitelist) codes stopping at `paid_since`, a 15-day trial per app and Mac from the first launch for apps that set `Config.Trial` (no code; kept in the Keychain across reinstalls; `trial_valid` / `trial_local` / `trial_expired`), the device limit, the account page for removing a Mac, the app's own code-signature check (Team ID 779M533DL5), texts. |
 | [`updates`](updates) | In-app updates on MyGo's updater API without MyGo's window: the state machine (checking, available, downloading with progress, ready to restart, failed), release notes in the app's language from actnow.dev's changelog API (English where a release has none), the history for Settings → About, automatic checks, and the "needs a paid licence" warning for early-access users. |
+| [`updatefeed`](updatefeed) | The update feed of actnow.dev (or refto.one) as MyGo's `UpdateSource` (`mygo.Updater.SetSource`): the releases' manifest, or with the beta channel (`beta/` beside it) the newer of both; the app's own transport (its proxy rule); downloads that resume with `Range`/`If-Range` where they broke off; 404 is "nothing published" (`ErrNotPublished`, an `fs.ErrNotExist`), which MyGo reports as no update. MyGo still checks every archive's and delta's release signature. |
 | [`feedback`](feedback) | In-app feedback over actnow.dev's (or refto.one's) feedback API, without UI: the form's checks (an email unless the licence code's owner is known), screenshots re-encoded without metadata (≤ 5 MB, at most 3), a screen recording (≤ 20 MB, compressed with `avconvert` when larger), diagnostics (this Mac, the app, recent log lines, warnings and errors, the last crash) through `redact`, an outbox that sends on submit and resumes after quitting or going offline, uploads straight to the storage bucket with a fallback through the site, this Mac's history of feedback with replies, reference texts. |
 | [`feedbackui`](feedbackui) | *A module of its own (depends on MyGo).* The feedback window the apps share: the form with an error report's card, thumbnail grid, image and video previews, Your feedback and its threads, `HistoryPanel` for Settings, `ReportLink`/`ReportLinkFunc` for "Report this problem…", themes and texts. |
 | [`listsel`](listsel) | The row selection of the apps' log views: click to copy a line, Shift/⌘-click and drag to select rows, ⌘A, Esc; rows named by stable keys. No UI. |
@@ -648,6 +650,23 @@ if s.NeedsPaidLicence {   // early access and version ≥ paid_since
 s = up.Install(ctx, userAcceptedPaid) // Downloading (s.Fraction()) → Ready, or Failed (app unchanged)
 _ = up.Restart()                      // Ready → the new version
 history, _ := up.History(ctx)         // Settings → About → Changelog
+```
+
+The feed itself, on MyGo 0.10 (ActNow's fork, which checks the release
+signature whatever the source): stable, or with the beta channel the
+newer of `beta/` and the releases', through the app's proxy, resuming
+broken downloads.
+
+```go
+import "github.com/hehehai/actnowkit/updatefeed"
+
+mygo.Updater.SetSource(&updatefeed.Source{
+	Base:      "https://actnow.dev/updates/dicta", // updates.url of the releases, without /beta
+	Target:    "darwin-arm64",                     // a universal build: "darwin-universal"
+	Beta:      func() bool { return betaUpdates }, // or let mygo.Updater.SetPrereleases decide
+	Transport: appTransport,                       // the app's proxy rule; nil: http.DefaultTransport
+	Log:       func(line string) { log.Print("updates: ", line) },
+})
 ```
 
 ## Conformance
